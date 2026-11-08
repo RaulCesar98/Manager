@@ -81,14 +81,16 @@ const MAX_CAPACITY = 90_000;
 export function expansionQuote(sector: Sector, amount: number) {
   return { cost: amount * SEAT_COST_BRL[sector] * 100, rounds: 2 + Math.ceil(amount / (sector === 'CAMAROTE' ? 100 : 2_500)) };
 }
+// Balanceamento: subir de nível custa ~35% menos e reforma ~60% menos que na versão
+// anterior, para caber no caixa junto com as vendas de jogadores (mais disputadas).
 export function levelQuote(f: Facility, level: number) {
   const next = level + 1;
-  return { cost: Math.round(900_000 * next ** 1.7 / 1000) * 1000 * 100 * (f === 'ESTADIO' ? 1.6 : 1), rounds: 3 + next };
+  return { cost: Math.round(585_000 * next ** 1.7 / 1000) * 1000 * 100 * (f === 'ESTADIO' ? 1.6 : 1), rounds: 3 + next };
 }
 export function reformQuote(room: Room, clubId: number, f: Facility) {
   const c = clubOf(room, clubId), cond = extraOf(room, clubId).condition[f];
   const size = f === 'ESTADIO' ? capacity(c) / 20_000 : 1;
-  return { cost: Math.round((100 - cond) * c.facilities[f] * 12_000 * Math.max(0.5, size) / 1000) * 1000 * 100, rounds: f === 'ESTADIO' ? 3 : 2 };
+  return { cost: Math.max(50_000 * 100, Math.round((100 - cond) * c.facilities[f] * 4_800 * Math.max(0.5, size) / 1000) * 1000 * 100), rounds: f === 'ESTADIO' ? 2 : 1 };
 }
 
 // ========================================================== obras
@@ -372,7 +374,7 @@ export function stadiumView(room: Room, clubId: number) {
       ocupada: busy.has(f), manutencao: club.facilities[f] ** 2 * 2_000 * 100,
       subir: club.facilities[f] < 10 ? levelQuote(f, club.facilities[f]) : null, reforma: reformQuote(room, clubId, f),
     })),
-    obras: projects.map((p) => ({ id: p.id, nome: p.label, custo: p.cost, pago: p.paid, rodadas: p.rounds, feitas: p.done, fechados: p.blockedSeats })),
+    obras: projects.map((p) => ({ id: p.id, instalacao: p.facility, setor: p.sector ?? null, nome: p.label, custo: p.cost, pago: p.paid, rodadas: p.rounds, feitas: p.done, fechados: p.blockedSeats })),
     caixa: club.balance,
   };
 }

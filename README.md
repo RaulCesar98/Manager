@@ -32,8 +32,22 @@ Jogador sem renovação sai de graça na virada da temporada; patrocínio vencid
 à venda, livres). Jogador livre: negocia o salário. Jogador da IA: negocia o passe com o
 clube e depois o salário; o passe só é pago quando ele assina. Jogador de outro técnico:
 compra pelo preço pedido ou manda proposta pela caixa de mensagens. Seus jogadores à venda
-recebem ofertas da IA. Valem a janela de transferências, o elenco máximo e o bloqueio de
-gastos com caixa negativo. Valor de mercado ≈ 2,5 temporadas de salário, por idade e potencial.
+recebem ofertas da IA com frequência, e até 3 clubes podem disputar o mesmo jogador (a
+disputa sobe a oferta). A IA também faz propostas surpresa por quem não está à venda, mirando
+os melhores e os que estão jogando bem, com ágio de 15% a 100% sobre o valor de mercado.
+Valem a janela de transferências, o elenco máximo e o bloqueio de gastos com caixa negativo.
+Valor de mercado ≈ 2,5 temporadas de salário, por idade e potencial.
+
+**Empréstimos (`server/loans.ts`):** pela ficha do jogador, peça emprestado até o fim desta
+temporada ou da próxima. Combine quanto do salário cada clube paga (0%, 25%, 50%, 75% ou
+100% para quem recebe), uma taxa de empréstimo e, se quiser, uma compra com valor pré-fixado
+ligada a uma meta (jogos, gols ou nota média). A compra pode ser opcional (bateu a meta, quem
+recebeu compra quando quiser) ou obrigatória (bateu a meta, a compra acontece sozinha no fim
+do empréstimo). Clubes da IA respondem na hora e dão uma dica do que falta; aceitam até 3
+tentativas por jogador e temporada. Marque seus jogadores como disponíveis para empréstimo e
+a IA manda pedidos (às vezes também por jovens que jogam pouco); você aceita, recusa ou faz
+contraproposta. Entre técnicos, o dono aceita ou recusa. O quadro "Empréstimos", no Mercado,
+mostra pedidos, jogadores cedidos e recebidos e o andamento das metas.
 
 **Tabela:** classificação, artilheiros e seleção do campeonato (4-3-3 pela média das notas,
 com mínimo de jogos de 40% das rodadas).
@@ -51,7 +65,9 @@ semente + mesmas ações nos mesmos minutos). Na velocidade instantânea, a roda
 do próximo jogo em casa enquanto você digita (até 6× o preço justo; caro demais irrita a
 torcida). Ampliação por setor (até 90 mil lugares) e obras de nível/reforma em estádio, CT,
 base e departamento médico. Obras são pagas em parcelas por rodada, levam várias rodadas e
-fecham parte dos lugares. Cada instalação perde ~1 ponto de conservação a cada 2 rodadas;
+fecham parte dos lugares. O mapa do clube mostra estádio (setores clicáveis para ampliar),
+CT, base e departamento médico; clique para ver nível, conservação e iniciar obras.
+Cada instalação perde ~1 ponto de conservação a cada 2 rodadas;
 estádio malconservado afasta público. CT acelera a evolução, departamento médico soma até +25
 ao médico e ao fisioterapeuta.
 
@@ -73,6 +89,7 @@ server/main.ts           servidor HTTP + API (sem dependências)
 server/engine.ts         regras do jogo: salas, escalação, rodadas, temporadas
 server/office.ts         caixa de mensagens, negociações (renovação, patrocínio, passe, venda), fim de contratos
 server/market.ts         mercado: busca, ficha, compra, venda, propostas entre técnicos, janela
+server/loans.ts          empréstimos: divisão de salário, taxa, compra pré-fixada por meta
 server/club.ts           estádio (ingressos, obras), instalações, divisão de base, evolução semanal
 server/store.ts          salvamento em arquivos JSON (troque por PostgreSQL para hospedar)
 web/index.html           login, cadastro e minhas salas

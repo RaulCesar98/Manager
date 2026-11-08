@@ -17,7 +17,7 @@ export type MessageType = 'LESAO' | 'SUSPENSAO' | 'TORCIDA' | 'PATROCINIO' | 'RE
 export interface Message {
   id: number; at: number; season: number; round: number;
   type: MessageType; title: string; body: string; read: boolean;
-  negId?: string; playerId?: number; offerId?: string;
+  negId?: string; playerId?: number; offerId?: string; loanId?: string;
 }
 
 export interface Terms { amount: number; seasons: number }
@@ -124,7 +124,10 @@ export function canRenew(room: Room, p: GenPlayer) {
 
 export function openRenewal(room: Room, clubId: number, playerId: number): Negotiation {
   ensure(room);
-  const p = room.world.players.find((x) => x.id === playerId && x.clubId === clubId);
+  // jogador emprestado: quem renova é o dono do contrato, não o clube que o recebeu
+  const loan = (room.loans ?? []).find((l) => l.playerId === playerId);
+  if (loan && loan.borrowerId === clubId) throw new OfficeError('Jogador emprestado: só o clube dono do contrato pode renovar.');
+  const p = room.world.players.find((x) => x.id === playerId && (x.clubId === clubId || loan?.ownerId === clubId));
   if (!p) throw new OfficeError('Esse jogador não é do seu elenco.');
   const open = room.negotiations!.find((n) => n.kind === 'RENOVACAO' && n.playerId === playerId && n.status === 'ABERTA');
   if (open) return open;

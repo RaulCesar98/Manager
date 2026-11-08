@@ -179,7 +179,7 @@ export function sponsorValuePerRound(p: {
   divisionTier: number;
   difficulty: DifficultyModifiers;
 }): number {
-  const fans = p.fanBase ** 0.85 * 1.3;                // R$
+  const fans = p.fanBase ** 0.85 * 1.69;               // R$ (contratos 30% maiores que na versão anterior)
   const rep = 0.6 + p.reputation / 100;
   const tier = TIER_FACTOR[Math.min(3, p.divisionTier - 1)];
   return Math.round(fans * rep * tier * SLOT_SHARE[p.slot] * p.difficulty.sponsorValue) * 100;

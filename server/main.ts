@@ -21,6 +21,7 @@ import {
 } from './office.ts';
 import type { SponsorSlot } from '../sim/fans.ts';
 import { cancelProject, extraIntake, gatePreview, promoteYouth, releaseYouth, setTicketPrices, stadiumView, startProject, youthView } from './club.ts';
+import { answerLoan, exerciseBuy, loanOf, loansView, playerLoanInfo, proposeLoan, setLoanListed } from './loans.ts';
 import { answerHumanOffer, currentValue, listingPrice, playerDetail, searchPlayers, setForSale, startInterest, type SearchFilters } from './market.ts';
 import {
   allRooms, checkPassword, createSession, createUser, dataDir, deleteSession, findUser, hashPassword,
@@ -232,7 +233,8 @@ function squadView(room: Room, clubId: number) {
         lesao: s.injured, suspenso: s.suspended, amarelos: s.yellows,
         gols: s.goals, jogos: s.apps, nota: s.apps ? Math.round((s.ratingSum / s.apps) * 10) / 10 : null,
         salario: p.weeklySalary, valor: currentValue(p), fimContrato: p.contractEnd,
-        podeRenovar: canRenew(room, p),
+        podeRenovar: canRenew(room, p) && loanOf(room, p.id)?.borrowerId !== clubId,
+        emprestimo: (() => { const l = loanOf(room, p.id); return l ? { dono: clubById(room, l.ownerId).name, ate: l.terms.until } : null; })(),
         negociacao: (room.negotiations ?? []).find((n) => n.playerId === p.id && n.status === 'ABERTA')?.id ?? null,
         recusouRenovar: (room.negotiations ?? []).some((n) => n.playerId === p.id && n.season === room.season && n.status === 'RECUSADA'),
         aVenda: listingPrice(room, p.id),
@@ -637,7 +639,8 @@ route('GET', '/api/salas/:id/mercado', async (req, res, [id]) => {
 route('GET', '/api/salas/:id/jogadores/:pid', async (req, res, [id, pid]) => {
   const u = requireUser(req);
   const room = roomById(id);
-  send(res, 200, playerDetail(room!, requireClub(room!, u), Number(pid)));
+  const clubId = requireClub(room!, u);
+  send(res, 200, { ...playerDetail(room!, clubId, Number(pid)), ...playerLoanInfo(room!, clubId, Number(pid)) });
 });
 
 route('POST', '/api/salas/:id/jogadores/:pid/interesse', async (req, res, [id, pid]) => {
@@ -669,6 +672,51 @@ route('POST', '/api/salas/:id/ofertas/:of', async (req, res, [id, of]) => {
   answerHumanOffer(room!, clubId, of, !!aceitar);
   saveRoom(room!);
   send(res, 200, { ok: true });
+});
+
+// ============================================================ empréstimos
+route('GET', '/api/salas/:id/emprestimos', async (req, res, [id]) => {
+  const u = requireUser(req);
+  const room = roomById(id);
+  send(res, 200, loansView(room!, requireClub(room!, u)));
+});
+route('POST', '/api/salas/:id/jogadores/:pid/emprestimo', async (req, res, [id, pid]) => {
+  const u = requireUser(req);
+  const room = roomById(id);
+  const clubId = requireClub(room!, u);
+  if (room!.live) throw new HttpError(400, 'Espere a rodada terminar.');
+  const r = proposeLoan(room!, clubId, Number(pid), await readBody(req));
+  saveRoom(room!);
+  send(res, 200, r);
+});
+route('POST', '/api/salas/:id/jogadores/:pid/emprestavel', async (req, res, [id, pid]) => {
+  const u = requireUser(req);
+  const room = roomById(id);
+  const clubId = requireClub(room!, u);
+  const { ativo } = await readBody(req);
+  const on = setLoanListed(room!, clubId, Number(pid), !!ativo);
+  saveRoom(room!);
+  send(res, 200, { disponivelEmprestimo: on });
+});
+route('POST', '/api/salas/:id/emprestimos/:lid', async (req, res, [id, lid]) => {
+  const u = requireUser(req);
+  const room = roomById(id);
+  const clubId = requireClub(room!, u);
+  if (room!.live) throw new HttpError(400, 'Espere a rodada terminar.');
+  const body = await readBody(req);
+  if (!['ACEITAR', 'RECUSAR', 'CONTRA'].includes(body.acao)) throw new HttpError(400, 'Ação inválida.');
+  const r = answerLoan(room!, clubId, lid, body.acao, body.condicoes);
+  saveRoom(room!);
+  send(res, 200, { ...r, emprestimos: loansView(room!, clubId) });
+});
+route('POST', '/api/salas/:id/emprestimos/:lid/comprar', async (req, res, [id, lid]) => {
+  const u = requireUser(req);
+  const room = roomById(id);
+  const clubId = requireClub(room!, u);
+  if (room!.live) throw new HttpError(400, 'Espere a rodada terminar.');
+  exerciseBuy(room!, clubId, lid);
+  saveRoom(room!);
+  send(res, 200, loansView(room!, clubId));
 });
 
 route('GET', '/api/salas/:id/financas', async (req, res, [id]) => {

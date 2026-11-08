@@ -33,7 +33,7 @@ const ATTR_LABEL: Record<Attribute, string> = {
   pace: 'Vel', stamina: 'Res', strength: 'For', passing: 'Pas', dribbling: 'Dri',
   finishing: 'Fin', defending: 'Def', heading: 'Cab', goalkeeping: 'Gol', vision: 'Vis',
 };
-const MIN_SQUAD_TO_SELL = 16;
+export const MIN_SQUAD_TO_SELL = 16;
 
 // ================================================================ util
 const clubOf = (room: Room, id: number) => room.world.clubs.find((c) => c.id === id)!;
@@ -81,37 +81,90 @@ function refreshAIListings(room: Room, initial = false) {
     const listed = squad.filter((p) => listingOf(room, p.id)).length;
     const want = (initial ? 2 : 1) - listed;
     if (want <= 0 || squad.length <= room.settings.rules.squadMin + 1) continue;
-    const ranked = [...squad].sort((a, b) => (overall(a) - (a.age >= 31 ? 6 : 0)) - (overall(b) - (b.age >= 31 ? 6 : 0)));
+    const ranked = squad.filter((p) => !isOnLoan(room, p.id)).sort((a, b) => (overall(a) - (a.age >= 31 ? 6 : 0)) - (overall(b) - (b.age >= 31 ? 6 : 0)));
     for (const p of ranked.slice(0, 6).sort(() => Math.random() - 0.5).slice(0, want)) {
       room.forSale!.push({ playerId: p.id, price: roundMoney(currentValue(p) * rand(0.85, 1.15)), since: room.round, season: room.season });
     }
   }
 }
 
-/** Depois de cada rodada: renova listas da IA, a IA faz ofertas por jogadores à venda dos humanos. */
+export const isOnLoan = (room: Room, playerId: number) => (room.loans ?? []).some((l) => l.playerId === playerId);
+
+// Propostas da IA pelos jogadores dos humanos. Valores em relação ao valor de mercado:
+// a IA paga ágio para tirar um jogador de outro clube, mais ainda quando ele não está à venda.
+const OFFER = {
+  listedChance: 0.65,          // chance por rodada de aparecer comprador para quem está à venda
+  maxBuyersPerPlayer: 3,       // vários clubes podem disputar o mesmo jogador
+  unsolicitedChance: 0.45,     // chance por rodada de proposta por alguém que NÃO está à venda
+  unsolicitedSecond: 0.2,      // chance de uma segunda proposta dessas na mesma rodada
+};
+
+function openSaleOffer(room: Room, p: GenPlayer, buyer: GenClub, listing: Listing | undefined) {
+  const value = currentValue(p);
+  const rivals = room.negotiations!.filter((n) => n.kind === 'VENDA' && n.playerId === p.id && n.status === 'ABERTA');
+  // disputa: com outro clube na briga, a oferta já começa mais alta
+  const heat = 1 + 0.08 * rivals.length;
+  let start: number, max: number;
+  if (listing) {
+    max = Math.min(listing.price * rand(1.0, 1.25), value * rand(1.6, 2.1)) * heat;
+    start = Math.min(listing.price * rand(0.82, 0.97), max * 0.9);
+  } else {
+    max = value * rand(1.55, 2.0) * heat;
+    start = value * rand(1.15, 1.4) * heat;
+  }
+  const n = openNeg(room, {
+    kind: 'VENDA', clubId: p.clubId!, playerId: p.id, otherClubId: buyer.id,
+    current: { amount: roundMoney(start), seasons: 1 }, maxAmount: roundMoney(Math.max(max, start)),
+    patience: Math.round(rand(2, 4)), expires: room.round + 3,
+    opening: `O ${buyer.name} oferece ${'%V'} por ${p.name}.`,
+  });
+  const rivalText = rivals.length ? ` Outro${rivals.length > 1 ? 's' : ''} ${rivals.length} clube${rivals.length > 1 ? 's' : ''} também ${rivals.length > 1 ? 'estão' : 'está'} na disputa.` : '';
+  sendToClub(room, p.clubId!, { type: 'MERCADO', negId: n.id, playerId: p.id, title: `${listing ? 'Oferta' : 'Proposta surpresa'} por ${p.name}`,
+    body: `O ${buyer.name} oferece ${brl(n.current.amount)} por ${p.name} (${listing ? `você pede ${brl(listing.price)}` : `ele não estava à venda; valor de mercado ${brl(value)}`}).${rivalText} A oferta vale até a rodada ${n.expiresRound}.` });
+  if (rivals.length) marketEnv.news?.(room, `Mercado: ${p.name} é disputado por ${rivals.length + 1} clubes.`);
+}
+
+function pickBuyer(room: Room, p: GenPlayer, price: number, humans: Set<number>) {
+  const ovr = overall(p);
+  const busy = new Set(room.negotiations!.filter((n) => n.kind === 'VENDA' && n.playerId === p.id && n.status === 'ABERTA').map((n) => n.otherClubId));
+  const buyers = room.world.clubs.filter((c) => !humans.has(c.id) && !busy.has(c.id) && c.balance > price * 0.6 && c.level >= ovr - 12 && c.level <= ovr + 15);
+  return buyers.length ? buyers[Math.floor(Math.random() * buyers.length)] : null;
+}
+
+/** Depois de cada rodada: renova listas da IA, a IA faz ofertas pelos jogadores dos humanos. */
 export function marketAfterRound(room: Room) {
   ensureMarket(room);
   if (room.round % 6 === 0) refreshAIListings(room);
   const humans = humanClubs(room);
   if (!windowStatus(room).open) return;
-  for (const l of room.forSale!) {
+  const openFor = (id: number) => room.negotiations!.filter((n) => n.kind === 'VENDA' && n.playerId === id && n.status === 'ABERTA').length;
+  // jogadores à venda: compradores aparecem com frequência e podem disputar
+  for (const l of [...room.forSale!]) {
     const p = room.world.players.find((x) => x.id === l.playerId);
-    if (!p || p.clubId === null || !humans.has(p.clubId)) continue;
-    if (room.negotiations!.some((n) => n.kind === 'VENDA' && n.playerId === p.id && n.status === 'ABERTA')) continue;
-    if (Math.random() > 0.3) continue;
-    const ovr = overall(p);
-    const buyers = room.world.clubs.filter((c) => !humans.has(c.id) && c.balance > l.price * 0.7 && c.level >= ovr - 12 && c.level <= ovr + 15);
-    if (!buyers.length) continue;
-    const buyer = buyers[Math.floor(Math.random() * buyers.length)];
-    openNeg(room, {
-      kind: 'VENDA', clubId: p.clubId, playerId: p.id, otherClubId: buyer.id,
-      current: { amount: roundMoney(l.price * rand(0.75, 0.95)), seasons: 1 }, maxAmount: roundMoney(l.price * rand(0.95, 1.2)),
-      patience: Math.round(rand(2, 4)), expires: room.round + 3,
-      opening: `O ${buyer.name} oferece ${'%V'} por ${p.name}.`,
-    });
-    const n = room.negotiations!.at(-1)!;
-    sendToClub(room, p.clubId, { type: 'MERCADO', negId: n.id, playerId: p.id, title: `Oferta por ${p.name}`,
-      body: `O ${buyer.name} oferece ${brl(n.current.amount)} por ${p.name} (você pede ${brl(l.price)}). A oferta vale até a rodada ${n.expiresRound}.` });
+    if (!p || p.clubId === null || !humans.has(p.clubId) || isOnLoan(room, p.id)) continue;
+    const open = openFor(p.id);
+    if (open >= OFFER.maxBuyersPerPlayer || Math.random() > OFFER.listedChance / (1 + open)) continue;
+    const buyer = pickBuyer(room, p, l.price, humans);
+    if (buyer) openSaleOffer(room, p, buyer, l);
+  }
+  // propostas por quem não está à venda: miram os melhores e os que estão jogando bem
+  for (const clubId of humans) {
+    const tries = (Math.random() < OFFER.unsolicitedChance ? 1 : 0) + (Math.random() < OFFER.unsolicitedSecond ? 1 : 0);
+    if (!tries || squadSize(room, clubId) <= MIN_SQUAD_TO_SELL) continue;
+    const pool = room.world.players.filter((x) => x.clubId === clubId && !x.isYouth && !listingOf(room, x.id) && !isOnLoan(room, x.id) && openFor(x.id) === 0);
+    const weight = (x: GenPlayer) => {
+      const s = room.status[x.id];
+      const rating = s?.apps ? s.ratingSum / s.apps : 6;
+      return Math.max(1, overall(x) - 45) ** 2 * (x.age <= 24 ? 1.4 : x.age >= 31 ? 0.5 : 1) * Math.max(0.5, rating - 5);
+    };
+    for (let i = 0; i < tries && pool.length; i++) {
+      const total = pool.reduce((s, x) => s + weight(x), 0);
+      let r = Math.random() * total, k = 0;
+      while (k < pool.length - 1 && (r -= weight(pool[k])) > 0) k++;
+      const p = pool.splice(k, 1)[0];
+      const buyer = pickBuyer(room, p, currentValue(p) * 1.3, humans);
+      if (buyer) openSaleOffer(room, p, buyer, undefined);
+    }
   }
 }
 
@@ -170,6 +223,7 @@ function playerRow(room: Room, p: GenPlayer) {
     salario: p.weeklySalary, valor: currentValue(p), caract: characteristics(p), aVenda: listingOf(room, p.id)?.price ?? null,
     gols: s?.goals ?? 0, jogos: s?.apps ?? 0, nota: s?.apps ? Math.round((s.ratingSum / s.apps) * 10) / 10 : null,
     fimContrato: p.contractEnd,
+    emprestado: (() => { const l = (room.loans ?? []).find((x) => x.playerId === p.id); return l ? { dono: clubOf(room, l.ownerId).name, ate: l.terms.until } : null; })(),
   };
 }
 
@@ -195,6 +249,8 @@ export function startInterest(room: Room, myClubId: number, playerId: number, fe
   const p = room.world.players.find((x) => x.id === playerId);
   if (!p || p.isYouth) throw new OfficeError('Jogador não encontrado.');
   if (p.clubId === myClubId) throw new OfficeError('Esse jogador já é seu.');
+  const loan = (room.loans ?? []).find((l) => l.playerId === p.id);
+  if (loan) throw new OfficeError(`${p.name} está emprestado ao ${clubOf(room, loan.borrowerId).name} até o fim da temporada ${loan.terms.until}.`);
   const open = room.negotiations!.find((n) => n.playerId === p.id && n.clubId === myClubId && n.status === 'ABERTA');
   if (open) return { negId: open.id };
   const w = windowStatus(room);
@@ -280,6 +336,7 @@ export function setForSale(room: Room, clubId: number, playerId: number, price: 
   ensureMarket(room);
   const p = room.world.players.find((x) => x.id === playerId && x.clubId === clubId);
   if (!p) throw new OfficeError('Esse jogador não é do seu elenco.');
+  if (isOnLoan(room, playerId) && price !== null) throw new OfficeError('Jogador emprestado não pode ser colocado à venda.');
   room.forSale = room.forSale!.filter((l) => l.playerId !== playerId);
   if (price === null) return null;
   if (!(price > 0)) throw new OfficeError('Informe o preço.');

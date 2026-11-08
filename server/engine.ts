@@ -17,6 +17,7 @@ import {
 import { overall, positionFactor, roleRating } from '../sim/strength.ts';
 import { expireContracts, officeAfterRound, seasonStartMessages, sendToClub, type Message, type Negotiation } from './office.ts';
 import { marketAfterRound, marketEnv, type HumanOffer, type Listing } from './market.ts';
+import { loanWageDelta, loansAfterRound, loansSeasonEnd, type Loan, type LoanProposal } from './loans.ts';
 import { clubAfterRound, clubSeasonStart, gateContext, medicalBonus, type ClubExtra, type Project, type YouthInfo } from './club.ts';
 import type { MatchEvent, MatchResult, Position, Staff, TeamSetup } from '../sim/types.ts';
 import {
@@ -113,6 +114,10 @@ export interface Room {
   clubExtra?: Record<number, ClubExtra>; // estado das instalações
   youthInfo?: Record<number, YouthInfo>;
   trainingProgress?: Record<number, Partial<Record<string, number>>>;
+  loans?: Loan[];                       // empréstimos em andamento
+  loanProposals?: LoanProposal[];       // pedidos de empréstimo
+  loanListed?: number[];                // jogadores dos humanos disponíveis para empréstimo
+  loanRefusals?: Record<string, number>; // pedidos recusados na temporada (temporada:clube:jogador)
 }
 
 /** Corrige números quebrados de salas antigas (humor, condição, atributos sempre inteiros). */
@@ -577,7 +582,8 @@ function applyRoundResults(room: Room, now: number, round: number, fixtures: Gen
     money(club, st, 'Produtos', merchandisingPerRound(club.fanBase, club.reputation, club.fanMood));
     const wages = squadOf(room, club.id).reduce((s, x) => s + x.weeklySalary, 0)
       + w.players.filter((x) => x.clubId === club.id && x.isYouth).reduce((s, x) => s + x.weeklySalary, 0)
-      + w.staff.filter((s) => s.clubId === club.id).reduce((s, x) => s + x.weeklySalary, 0);
+      + w.staff.filter((s) => s.clubId === club.id).reduce((s, x) => s + x.weeklySalary, 0)
+      + loanWageDelta(room, club.id);   // empréstimos: o dono paga a parte combinada do salário
     money(club, st, 'Salários', -wages);
     const maint = Object.values(club.facilities).reduce((s, lvl) => s + maintenancePerRound(lvl), 0);
     money(club, st, 'Manutenção', -maint);
@@ -626,6 +632,7 @@ function applyRoundResults(room: Room, now: number, round: number, fixtures: Gen
   }
   officeAfterRound(room);
   marketAfterRound(room);
+  loansAfterRound(room);
   clubAfterRound(room);
   // AFK e prontos
   const slots = humanSlots(room);
@@ -731,6 +738,7 @@ function endSeason(room: Room) {
   // nova temporada
   for (const [id, tier] of tierChange) clubById(room, id).tier = tier;
   room.lastSeason = summary;
+  loansSeasonEnd(room);   // antes de zerar as estatísticas (metas de compra usam os números da temporada)
   room.season++;
   room.round = 0;
   const rng = new Rng(w.seed + room.season * 7919);

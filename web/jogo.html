@@ -243,6 +243,51 @@ button.board:hover { box-shadow: 0 0 0 2px var(--card); }
 .feed li.INTERVALO, .feed li.FIM { background: var(--ink); color: var(--bg); font-weight: 600; }
 .feed li.INTERVALO .m, .feed li.FIM .m { color: inherit; opacity: .7; }
 .feed li.CHANCE { opacity: .7; }
+
+/* ------------------------------------------------ mapa do clube */
+.map-grid { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); align-items: start; }
+@media (min-width: 900px) { .map-grid { grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr); } }
+.cmap { width: 100%; height: auto; display: block; border-radius: var(--r); background: var(--pitch-soft); }
+.cmap .ground { fill: var(--pitch-soft); }
+.cmap .path { fill: none; stroke: var(--line); stroke-width: 10; stroke-linecap: round; }
+.cmap .lot { fill: var(--surface); stroke: var(--line); stroke-width: 1.5; }
+.cmap .bld { fill: var(--bg); stroke: var(--muted); stroke-width: 1.5; }
+.cmap .grass { fill: #2f7a4a; stroke: none; }
+.cmap .grass-l { fill: none; stroke: rgba(255,255,255,.65); stroke-width: 1.2; }
+.cmap .stand { fill: var(--surface); stroke: var(--muted); stroke-width: 1.5; stroke-linejoin: round; }
+.cmap .lbl { font: 700 13px var(--f-display); text-transform: uppercase; letter-spacing: .04em; fill: var(--ink); pointer-events: none; }
+.cmap .lbl-s { font: 600 11px var(--f-body); fill: var(--muted); pointer-events: none; }
+.cmap .badge-c { fill: var(--pitch); } .cmap .badge-t { font: 800 13px var(--f-display); fill: var(--bg); pointer-events: none; }
+.cmap .badge-c.warn { fill: var(--bad); }
+.cmap .obra { fill: url(#obraStripes); pointer-events: none; }
+.cmap .obra-t { font: 800 11px var(--f-body); letter-spacing: .08em; fill: var(--card-ink); pointer-events: none; }
+.cmap .obra-b { fill: var(--card); pointer-events: none; }
+.cmap .cross { fill: var(--bad); pointer-events: none; }
+.cmap .hit { cursor: pointer; outline: none; }
+.cmap .hit .shape { transition: stroke .15s, stroke-width .15s; }
+.cmap .hit:hover .shape, .cmap .hit:focus-visible .shape { stroke: var(--pitch); stroke-width: 3; }
+.cmap .hit.sel .shape { stroke: var(--card); stroke-width: 4; }
+.cmap .hit.low .shape { stroke-dasharray: 6 4; }
+.map-panel { display: grid; gap: 10px; align-content: start; }
+.map-panel h4 { margin: 0; font: 800 22px/1 var(--f-display); text-transform: uppercase; letter-spacing: .02em; display: flex; justify-content: space-between; gap: 8px; }
+.map-panel p { margin: 0; font-size: 14px; }
+.map-panel .btns { display: grid; gap: 6px; }
+.map-panel .btn { text-align: left; font-size: 13px; }
+.map-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--muted); }
+.map-legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 4px; }
+
+/* ------------------------------------------------ empréstimos */
+.loan-list { display: grid; gap: 8px; }
+.loan { border: 1px solid var(--line); border-radius: var(--r); padding: 10px 12px; display: grid; gap: 6px; background: var(--bg); }
+.loan .ltop { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 12px; align-items: baseline; }
+.loan p { margin: 0; font-size: 13px; }
+.loan .goal { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; font-size: 13px; }
+.loan-form { display: grid; gap: 12px; }
+.loan-form .row2 { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); align-items: end; }
+.loan-form fieldset { border: 1px solid var(--line); border-radius: var(--r); padding: 10px 12px; margin: 0; display: grid; gap: 10px; }
+.loan-form legend { padding: 0 6px; font: 700 12px var(--f-body); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.loan-form .inline { display: flex; gap: 8px; align-items: center; text-transform: none; letter-spacing: 0; font: 500 14px var(--f-body); color: var(--ink); }
+.loan-sum { padding: 10px 12px; border-radius: var(--r); background: var(--bg); font-size: 14px; display: grid; gap: 2px; }
 </style>
 
 <div class="wrap">
@@ -361,6 +406,8 @@ button.board:hover { box-shadow: 0 0 0 2px var(--card); }
     </div>
 
     <div data-view="mercado" hidden style="display:grid;gap:16px">
+      <div class="card" id="loansCard"><header class="row-head"><h3>Empréstimos</h3><span class="small muted">Peça emprestado pela ficha do jogador. Na ficha dos seus jogadores, marque quem está disponível para empréstimo.</span></header>
+        <div id="loansBody"><p class="muted small" style="margin:0">Carregando…</p></div></div>
       <form class="card" id="marketForm">
         <header><h3>Busca de jogadores</h3><span class="tag" id="windowTag"></span></header>
         <div class="filters">
@@ -398,6 +445,10 @@ button.board:hover { box-shadow: 0 0 0 2px var(--card); }
 
     <div data-view="estadio" hidden style="display:grid;gap:16px">
       <div class="card"><dl class="stats" id="stStats"></dl></div>
+      <div class="card"><header class="row-head"><h3>Mapa do clube</h3><span class="small muted">Clique num setor ou prédio para ver detalhes, ampliar ou subir de nível.</span></header>
+        <div class="map-grid"><div><div id="clubMap"></div>
+          <div class="map-legend" style="margin-top:8px"><span><i style="background:var(--pitch)"></i>nível</span><span><i style="background:var(--bad)"></i>conservação abaixo de 60%</span><span><i style="background:var(--card)"></i>obra em andamento</span></div></div>
+          <div class="map-panel" id="mapPanel"></div></div></div>
       <div class="card"><header class="row-head"><h3>Ingressos</h3><span class="small muted">Preço justo: o que a torcida acha razoável para um clube do seu tamanho.</span></header>
         <div class="table-wrap"><table id="ticketTable"></table></div>
         <div class="preview" id="gatePreview"></div>
@@ -495,6 +546,34 @@ button.board:hover { box-shadow: 0 0 0 2px var(--card); }
         <button class="btn" type="button" id="negAccept"></button>
         <button class="btn danger" type="button" id="negEnd">Encerrar negociação</button>
       </div>
+    </form>
+  </div>
+</div>
+
+<!-- empréstimo: pedir ou contrapropor -->
+<div class="modal" id="loanModal" hidden role="dialog" aria-modal="true" aria-labelledby="loanTitle">
+  <div class="card">
+    <header><h3 id="loanTitle">Empréstimo</h3><button class="btn" id="loanClose" type="button">Fechar</button></header>
+    <p class="small muted" id="loanIntro" style="margin:0"></p>
+    <form class="loan-form" id="loanForm">
+      <div class="row2">
+        <div class="field"><label for="lnUntil">Duração</label><select id="lnUntil"></select></div>
+        <div class="field"><label for="lnShare" id="lnShareLabel">Quem paga o salário</label><select id="lnShare"></select></div>
+        <div class="field"><label for="lnFee">Taxa de empréstimo</label><div class="money-input"><span>R$</span><input id="lnFee" type="number" min="0" step="1" value="0" inputmode="numeric"></div></div>
+      </div>
+      <fieldset>
+        <legend>Cláusula de compra</legend>
+        <label class="inline"><input type="checkbox" id="lnBuy"> Incluir compra com valor pré-fixado</label>
+        <div class="row2" id="lnBuyFields" hidden>
+          <div class="field"><label for="lnPrice">Valor da compra</label><div class="money-input"><span>R$</span><input id="lnPrice" type="number" min="1" step="1" inputmode="numeric"></div></div>
+          <div class="field"><label for="lnGoal">Meta</label><select id="lnGoal"><option value="NENHUMA">Sem meta</option><option value="JOGOS">Jogos disputados</option><option value="GOLS">Gols marcados</option><option value="NOTA">Nota média</option></select></div>
+          <div class="field" id="lnTargetF"><label for="lnTarget" id="lnTargetLabel">Alvo</label><input id="lnTarget" type="number" min="1" step="1"></div>
+          <label class="inline" style="grid-column:1/-1"><input type="checkbox" id="lnMandatory"> Compra obrigatória: se bater a meta, a compra acontece sozinha no fim do empréstimo</label>
+        </div>
+      </fieldset>
+      <div class="loan-sum" id="loanSum"></div>
+      <div id="loanResult"></div>
+      <div class="neg-actions"><button class="btn primary" type="submit" id="loanSubmit">Enviar proposta</button></div>
     </form>
   </div>
 </div>
@@ -971,7 +1050,7 @@ function renderSquadTable() {
       <td><span class="cond"><span class="bar ${p.cond < 60 ? 'low' : p.cond < 80 ? 'warn' : ''}"><i style="width:${p.cond}%"></i></span>${p.cond}</span></td><td>${p.forma}</td>
       ${showA ? ATTR.map(([k]) => `<td class="attr">${Math.round(p.attrs[k])}</td>`).join('') : `<td>${p.jogos}</td><td>${p.gols}</td><td>${p.nota ?? '—'}</td><td>${brl(p.salario)}</td><td>${brl(p.valor)}</td>
       <td class="l">T${p.fimContrato}${p.fimContrato === squad.temporada ? ' <span class="tag card">último ano</span>' : ''} ${p.recusouRenovar ? '<span class="tag bad">Não renova</span>' : p.podeRenovar ? `<button class="link-btn small" data-renew="${p.id}">${p.negociacao ? 'Negociando' : 'Renovar'}</button>` : ''}</td>`}
-      <td class="l">${p.lesao ? `<span class="tag bad">Lesão ${p.lesao}r</span>` : p.suspenso ? `<span class="tag bad">Suspenso</span>` : inLineup.has(p.id) ? '<span class="tag good">Titular</span>' : inBench.has(p.id) ? '<span class="tag">Reserva</span>' : ''}${p.amarelos ? ` <span class="tag card">${p.amarelos} 🟨</span>` : ''}${p.aVenda !== null ? ` <span class="tag good">À venda ${brl(p.aVenda)}</span>` : ''}</td>
+      <td class="l">${p.lesao ? `<span class="tag bad">Lesão ${p.lesao}r</span>` : p.suspenso ? `<span class="tag bad">Suspenso</span>` : inLineup.has(p.id) ? '<span class="tag good">Titular</span>' : inBench.has(p.id) ? '<span class="tag">Reserva</span>' : ''}${p.amarelos ? ` <span class="tag card">${p.amarelos} 🟨</span>` : ''}${p.aVenda !== null ? ` <span class="tag good">À venda ${brl(p.aVenda)}</span>` : ''}${p.emprestimo ? ` <span class="tag" title="Empréstimo até o fim da temporada ${p.emprestimo.ate}">Emprestado pelo ${esc(p.emprestimo.dono)}</span>` : ''}</td>
     </tr>`).join('')}</tbody>`;
 }
 function sortBy(k) {
@@ -1185,6 +1264,7 @@ async function renderStadium(data) {
         ${f.subir ? `<button class="btn primary" data-work="NIVEL" data-fac="${f.tipo}">Subir para nível ${f.nivel + 1} · ${brl(f.subir.cost)} · ${f.subir.rounds} rodadas</button>` : '<span class="tag good">Nível máximo</span>'}
         ${f.estado < 97 ? `<button class="btn" data-work="REFORMA" data-fac="${f.tipo}">Reformar · ${brl(f.reforma.cost)} · ${f.reforma.rounds} rodadas</button>` : ''}`}
       </div></div>`).join('');
+  renderClubMap();
 }
 function renderPreview(p) {
   if (!p.rodada) { $('#gatePreview').innerHTML = '<span class="muted">Sem jogos em casa até o fim da temporada.</span>'; return; }
@@ -1238,6 +1318,136 @@ $('#works').onclick = async (e) => {
   if (!confirm('Cancelar a obra? O que já foi pago não volta.')) return;
   try { await renderStadium(await api(`/salas/${roomId}/obras/${b.dataset.cancel}/cancelar`, { method: 'POST' })); load(); } catch (err) { toast(err.message); }
 };
+
+// ======================================================== mapa do clube
+// Vista de cima: estádio no centro (4 setores clicáveis em volta do gramado), CT, base e
+// departamento médico ao redor. Clicar mostra o painel ao lado com as obras possíveis.
+let mapSel = 'ESTADIO';
+const STAND_GEO = [   // norte, leste, sul, oeste (na ordem dos setores do estádio)
+  { pts: '262,58 538,58 472,120 328,120', lx: 400, ly: 86, rot: 0 },
+  { pts: '540,60 540,360 474,300 474,122', lx: 512, ly: 210, rot: 90 },
+  { pts: '538,362 262,362 328,302 472,302', lx: 400, ly: 334, rot: 0 },
+  { pts: '260,360 260,60 326,122 326,300', lx: 288, ly: 210, rot: -90 },
+];
+function mapBadge(x, y, f) {
+  return `<circle class="badge-c ${f.estado < 60 ? 'warn' : ''}" cx="${x}" cy="${y}" r="13"/><text class="badge-t" x="${x}" y="${y + 4.5}" text-anchor="middle">${f.nivel}</text>`;
+}
+function mapObra(x, y, w, h) {
+  return `<rect class="obra" x="${x}" y="${y}" width="${w}" height="${h}" rx="6"/><rect class="obra-b" x="${x + w / 2 - 28}" y="${y + h / 2 - 10}" width="56" height="20" rx="4"/><text class="obra-t" x="${x + w / 2}" y="${y + h / 2 + 4}" text-anchor="middle">OBRA</text>`;
+}
+function renderClubMap() {
+  const st = stadium; if (!st) return;
+  const fac = Object.fromEntries(st.instalacoes.map((f) => [f.tipo, f]));
+  const busy = (t) => fac[t].ocupada;
+  const hit = (key, label, cls = '') => `class="hit ${mapSel === key ? 'sel' : ''} ${cls}" data-map="${key}" tabindex="0" role="button" aria-label="${esc(label)}" aria-pressed="${mapSel === key}"`;
+  const low = (t) => fac[t].estado < 60 ? 'low' : '';
+  const stands = st.setores.slice(0, 4).map((x, i) => {
+    const g = STAND_GEO[i];
+    return `<g ${hit('SETOR:' + x.setor, `${x.nome}: ${fmtNum(x.capacidade)} lugares`, low('ESTADIO'))}>
+      <polygon class="stand shape" points="${g.pts}"/>
+      <g transform="rotate(${g.rot} ${g.lx} ${g.ly})"><text class="lbl" x="${g.lx}" y="${g.ly - 2}" text-anchor="middle">${esc(x.nome)}</text>
+      <text class="lbl-s" x="${g.lx}" y="${g.ly + 13}" text-anchor="middle">${fmtNum(x.capacidade)} lugares</text></g></g>`;
+  }).join('');
+  const svg = `<svg class="cmap" viewBox="0 0 800 420" role="group" aria-label="Mapa do clube">
+    <defs><pattern id="obraStripes" patternUnits="userSpaceOnUse" width="14" height="14" patternTransform="rotate(45)"><rect width="7" height="14" style="fill:var(--card);opacity:.55"/></pattern></defs>
+    <rect class="ground" x="0" y="0" width="800" height="420"/>
+    <path class="path" d="M225 140 H258 M225 330 H258 M542 120 H578 M542 300 H578 M400 362 V410"/>
+    <!-- estádio -->
+    <g>${stands}</g>
+    <g ${hit('ESTADIO', `Estádio, nível ${fac.ESTADIO.nivel}`, low('ESTADIO'))}>
+      <rect class="grass shape" x="328" y="122" width="144" height="178" rx="2"/>
+      <rect class="grass-l" x="336" y="130" width="128" height="162"/><line class="grass-l" x1="336" y1="211" x2="464" y2="211"/><circle class="grass-l" cx="400" cy="211" r="16"/>
+      <rect class="grass-l" x="372" y="130" width="56" height="20"/><rect class="grass-l" x="372" y="272" width="56" height="20"/>
+      <text class="lbl" x="400" y="178" text-anchor="middle" style="fill:#fff">${esc(st.nome.length > 18 ? 'Estádio' : st.nome)}</text>
+      <text class="lbl-s" x="400" y="252" text-anchor="middle" style="fill:rgba(255,255,255,.85)">${fmtNum(st.capacidade)} lugares</text>
+    </g>
+    ${mapBadge(540, 60, fac.ESTADIO)}
+    ${busy('ESTADIO') ? mapObra(262, 58, 278, 304) : ''}
+    <!-- centro de treinamento -->
+    <g ${hit('CT', `Centro de treinamento, nível ${fac.CT.nivel}`, low('CT'))}>
+      <rect class="lot shape" x="20" y="30" width="205" height="215" rx="8"/>
+      <rect class="grass" x="32" y="44" width="86" height="120" rx="2"/><rect class="grass-l" x="38" y="50" width="74" height="108"/><line class="grass-l" x1="38" y1="104" x2="112" y2="104"/>
+      <rect class="grass" x="128" y="44" width="86" height="120" rx="2"/><rect class="grass-l" x="134" y="50" width="74" height="108"/><line class="grass-l" x1="134" y1="104" x2="208" y2="104"/>
+      <rect class="bld" x="32" y="176" width="182" height="56" rx="4"/>
+      <text class="lbl" x="123" y="200" text-anchor="middle">Centro de treinamento</text><text class="lbl-s" x="123" y="219" text-anchor="middle">evolução dos jogadores</text>
+    </g>
+    ${mapBadge(222, 34, fac.CT)}
+    ${busy('CT') ? mapObra(20, 30, 205, 215) : ''}
+    <!-- divisão de base -->
+    <g ${hit('BASE', `Divisão de base, nível ${fac.BASE.nivel}`, low('BASE'))}>
+      <rect class="lot shape" x="20" y="262" width="205" height="140" rx="8"/>
+      <rect class="grass" x="32" y="276" width="98" height="112" rx="2"/><rect class="grass-l" x="38" y="282" width="86" height="100"/><line class="grass-l" x1="38" y1="332" x2="124" y2="332"/>
+      <rect class="bld" x="140" y="276" width="74" height="112" rx="4"/>
+      <text class="lbl" x="177" y="326" text-anchor="middle">Base</text><text class="lbl-s" x="177" y="344" text-anchor="middle">${youth ? youth.jovens.length + ' jovens' : 'peneiras'}</text>
+    </g>
+    ${mapBadge(222, 266, fac.BASE)}
+    ${busy('BASE') ? mapObra(20, 262, 205, 140) : ''}
+    <!-- departamento médico -->
+    <g ${hit('DEPTO_MEDICO', `Departamento médico, nível ${fac.DEPTO_MEDICO.nivel}`, low('DEPTO_MEDICO'))}>
+      <rect class="lot shape" x="575" y="30" width="205" height="170" rx="8"/>
+      <rect class="bld" x="595" y="48" width="165" height="134" rx="4"/>
+      <rect class="cross" x="665" y="64" width="24" height="64" rx="3"/><rect class="cross" x="645" y="84" width="64" height="24" rx="3"/>
+      <text class="lbl" x="677" y="154" text-anchor="middle">Departamento médico</text><text class="lbl-s" x="677" y="171" text-anchor="middle">lesões e recuperação</text>
+    </g>
+    ${mapBadge(777, 34, fac.DEPTO_MEDICO)}
+    ${busy('DEPTO_MEDICO') ? mapObra(575, 30, 205, 170) : ''}
+    <!-- administração (decorativo) -->
+    <rect class="lot" x="575" y="218" width="205" height="184" rx="8"/>
+    <rect class="bld" x="595" y="236" width="165" height="60" rx="4"/>
+    <text class="lbl" x="677" y="262" text-anchor="middle">Administração</text><text class="lbl-s" x="677" y="280" text-anchor="middle">caixa ${brl(st.caixa)}</text>
+    ${Array.from({ length: 6 }, (_, i) => `<rect x="${600 + i * 27}" y="318" width="20" height="34" rx="2" style="fill:none;stroke:var(--line);stroke-width:1.5"/>`).join('')}
+    <text class="lbl-s" x="677" y="380" text-anchor="middle">estacionamento</text>
+  </svg>`;
+  $('#clubMap').innerHTML = svg;
+  renderMapPanel();
+}
+function facilityButtons(f) {
+  if (f.ocupada) {
+    const o = stadium.obras.find((x) => x.instalacao === f.tipo);
+    return o ? `<div class="work" style="padding:0;border:0"><div class="wtop"><strong>${esc(o.nome)}</strong></div><div class="bar"><i style="width:${pct(o.feitas, o.rodadas)}%"></i></div>
+      <span class="small muted">${o.feitas} de ${o.rodadas} rodadas · pago ${brl(o.pago)} de ${brl(o.custo)}</span></div>` : '<span class="tag">Obra em andamento</span>';
+  }
+  return `${f.subir ? `<button class="btn primary" data-work="NIVEL" data-fac="${f.tipo}">Subir para nível ${f.nivel + 1} · ${brl(f.subir.cost)} · ${f.subir.rounds} rodadas</button>` : '<span class="tag good">Nível máximo</span>'}
+    ${f.estado < 97 ? `<button class="btn" data-work="REFORMA" data-fac="${f.tipo}">Reformar · ${brl(f.reforma.cost)} · ${f.reforma.rounds} rodada${f.reforma.rounds > 1 ? 's' : ''}</button>` : ''}`;
+}
+function renderMapPanel() {
+  const st = stadium, fac = Object.fromEntries(st.instalacoes.map((f) => [f.tipo, f]));
+  const facBlock = (f) => `
+    <div class="pips" aria-label="Nível ${f.nivel} de 10">${Array.from({ length: 10 }, (_, i) => `<i class="${i < f.nivel ? 'on' : ''}"></i>`).join('')}</div>
+    <div style="display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;font-size:13px"><span class="muted">Conservação</span>
+      <div class="bar ${f.estado < 60 ? 'low' : f.estado < 80 ? 'warn' : ''}"><i style="width:${f.estado}%"></i></div><strong>${f.estado}%</strong></div>
+    <p>${esc(f.efeito)}</p><p class="small muted">Manutenção: ${brl(f.manutencao)} por rodada.</p>
+    <div class="btns">${facilityButtons(f)}</div>`;
+  let html;
+  if (mapSel.startsWith('SETOR:')) {
+    const x = st.setores.find((s) => s.setor === mapSel.slice(6)) ?? st.setores[0];
+    const f = fac.ESTADIO;
+    const exp = x.ampliacoes.map((a) => {
+      const over = st.capacidade + a.lugares > st.maximo;
+      return `<button class="btn ${over ? '' : 'primary'}" data-expand="${a.lugares}" data-sector="${x.setor}" ${over || f.ocupada ? 'disabled' : ''}>+${fmtNum(a.lugares)} lugares · ${brl(a.cost)} · ${a.rounds} rodadas</button>`;
+    }).join('');
+    html = `<h4><span>${esc(x.nome)}</span><span class="small muted" style="font:600 13px var(--f-body)">setor do estádio</span></h4>
+      <dl class="neg-facts"><div><dt>Lugares</dt><dd>${fmtNum(x.capacidade)}</dd></div><div><dt>Conforto</dt><dd>${x.conforto}</dd></div>
+        <div><dt>Ingresso</dt><dd>${brl(x.preco, false)}</dd></div><div><dt>Último jogo</dt><dd>${x.ultimoPublico === null ? '–' : pct(x.ultimoPublico, x.capacidade) + '%'}</dd></div></dl>
+      <p class="small muted">Ampliar fecha parte do setor durante a obra. ${f.ocupada ? '<strong class="money-out">O estádio já tem uma obra em andamento.</strong>' : ''}</p>
+      <div class="btns">${exp}</div>
+      <h4 style="font-size:16px;margin-top:6px"><span>Estádio</span><span>${f.nivel}/10</span></h4>${facBlock(f)}`;
+  } else {
+    const f = fac[mapSel] ?? fac.ESTADIO;
+    html = `<h4><span>${esc(f.nome)}</span><span>${f.nivel}/10</span></h4>${facBlock(f)}`;
+  }
+  $('#mapPanel').innerHTML = html;
+}
+function selectMap(key) { mapSel = key; renderClubMap(); if (innerWidth < 900) $('#mapPanel').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+$('#clubMap').addEventListener('click', (e) => { const g = e.target.closest('[data-map]'); if (g) selectMap(g.dataset.map); });
+$('#clubMap').addEventListener('keydown', (e) => { if (e.key !== 'Enter' && e.key !== ' ') return; const g = e.target.closest('[data-map]'); if (g) { e.preventDefault(); selectMap(g.dataset.map); } });
+$('#mapPanel').addEventListener('click', (e) => {
+  const w = e.target.closest('[data-work]');
+  if (w) { startWork({ tipo: w.dataset.work, instalacao: w.dataset.fac }, w.textContent.trim()); return; }
+  const x = e.target.closest('[data-expand]');
+  if (x) { const sec = stadium.setores.find((s) => s.setor === x.dataset.sector);
+    startWork({ tipo: 'AMPLIAR', instalacao: 'ESTADIO', setor: x.dataset.sector, quantidade: Number(x.dataset.expand) }, `ampliar ${sec.nome} em ${fmtNum(Number(x.dataset.expand))} lugares`); }
+});
 
 // ======================================================== divisão de base
 let youth = null, ySortKey = 'potMax', ySortDir = -1;
@@ -1316,7 +1526,7 @@ function renderMarketTable() {
     <tbody>${rows.map((p) => `<tr class="clickable" data-player="${p.id}" tabindex="0">
       <td class="l"><strong>${esc(p.nome)}</strong></td><td class="l">${p.clube ? esc(p.clube.nome) : '<span class="tag good">Livre</span>'}</td>
       <td><span class="pos ${p.pos}">${p.pos}</span></td><td>${p.idade}</td><td><strong>${p.ovr}</strong></td><td>${brl(p.salario)}</td><td>${brl(p.valor)}</td>
-      <td class="l">${p.caract.join('/')}</td><td>${p.aVenda !== null ? `<span class="money-in">${brl(p.aVenda)}</span>` : p.clube ? '<span class="muted">✗</span>' : '<span class="muted">livre</span>'}</td>
+      <td class="l">${p.caract.join('/')}</td><td>${p.emprestado ? `<span class="tag" title="Emprestado pelo ${esc(p.emprestado.dono)} até T${p.emprestado.ate}">emprestado</span>` : p.aVenda !== null ? `<span class="money-in">${brl(p.aVenda)}</span>` : p.clube ? '<span class="muted">✗</span>' : '<span class="muted">livre</span>'}</td>
       <td>${p.gols}</td><td>${p.nota ?? '—'}</td><td>T${p.fimContrato}</td></tr>`).join('')}</tbody>`;
 }
 $('#marketForm').onsubmit = (e) => { e.preventDefault(); searchMarket(); };
@@ -1340,21 +1550,50 @@ async function openPlayer(id) {
     <div><dt>Clube</dt><dd>${pm.clube ? esc(pm.clube.nome) : 'Sem clube'}</dd></div><div><dt>Contrato</dt><dd>${pm.clube ? 'até T' + pm.fimContrato : '—'}</dd></div>
     <div><dt>Salário</dt><dd>${brl(pm.salario, false)}/sem.</dd></div><div><dt>Valor de mercado</dt><dd>${brl(pm.valor, false)}</dd></div>
     <div><dt>Temporada</dt><dd>${pm.jogos} J · ${pm.gols} G · nota ${pm.nota ?? '—'}</dd></div><div><dt>Características</dt><dd>${pm.caract.join(', ')}</dd></div>
-    ${pm.aVenda !== null ? `<div><dt>À venda por</dt><dd class="money-in">${brl(pm.aVenda, false)}</dd></div>` : ''}${pm.lesionado ? `<div><dt>Situação</dt><dd class="money-out">Lesionado (${pm.lesionado} rod.)</dd></div>` : ''}`;
+    ${pm.aVenda !== null ? `<div><dt>À venda por</dt><dd class="money-in">${brl(pm.aVenda, false)}</dd></div>` : ''}${pm.lesionado ? `<div><dt>Situação</dt><dd class="money-out">Lesionado (${pm.lesionado} rod.)</dd></div>` : ''}
+    ${pm.emprestimo ? `<div><dt>Empréstimo</dt><dd>do ${esc(pm.emprestimo.dono)} ao ${esc(pm.emprestimo.recebe)} até T${pm.emprestimo.ate}</dd></div>` : ''}`;
   $('#pmAttrs').innerHTML = Object.entries(pm.attrs).filter(([k]) => pm.pos === 'GOL' || k !== 'goalkeeping')
     .map(([k, v]) => `<div class="attr-row"><span>${ATTR_NAME[k]}</span><span class="bar ${v < 50 ? 'low' : v < 65 ? 'warn' : ''}"><i style="width:${v}%"></i></span><strong>${Math.round(v)}</strong></div>`).join('');
   renderPlayerActions();
   $('#playerModal').hidden = false;
 }
+function loanBox(l, mine) {
+  const pr = l.progresso;
+  const c = l.compra;
+  return `<div class="loan">
+    <p>${esc(l.termos)}.</p>
+    <p>${mine === 'recebe' ? `Você paga <strong>${brl(l.vocePaga)}</strong> por semana (${l.porcentagemRecebe}% do salário).` : mine === 'dono' ? `Você continua pagando <strong>${brl(l.vocePaga)}</strong> por semana (${100 - l.porcentagemRecebe}% do salário).` : ''}
+      No empréstimo: ${pr.apps} jogos, ${pr.goals} gols${pr.rating ? `, nota ${pr.rating}` : ''}.</p>
+    ${c ? goalLine(c, pr) : ''}
+    ${l.podeComprar ? `<div class="neg-actions"><button class="btn primary" data-buy-loan="${esc(l.id)}">Comprar agora por ${brl(c.valor, false)}</button></div>` : ''}
+  </div>`;
+}
+function goalLine(c, pr) {
+  if (c.meta === 'NENHUMA') return `<p><strong>${c.obrigatoria ? 'Compra obrigatória' : 'Opção de compra'}</strong> por ${brl(c.valor)}, sem meta${c.obrigatoria ? ' (acontece no fim do empréstimo)' : ''}.</p>`;
+  const cur = c.meta === 'JOGOS' ? pr.apps : c.meta === 'GOLS' ? pr.goals : (pr.rating ?? 0);
+  const p = Math.min(100, Math.round(cur / c.alvo * 100));
+  const fmt = (v) => c.meta === 'NOTA' ? Number(v).toFixed(1) : v;
+  return `<div class="goal"><span class="muted">${esc(c.metaNome)}</span><div class="bar ${c.batida ? '' : 'warn'}"><i style="width:${p}%"></i></div><strong>${fmt(cur)}/${fmt(c.alvo)}</strong></div>
+    <p class="small">${c.batida ? '<strong class="money-in">Meta batida.</strong> ' : ''}${c.obrigatoria ? 'Compra obrigatória' : 'Opção de compra'} por ${brl(c.valor)}${c.meta === 'NOTA' ? ' (mínimo 5 jogos)' : ''}.</p>`;
+}
 function renderPlayerActions() {
   const a = $('#pmActions');
+  if (pm.emprestimo) {
+    const l = pm.emprestimo;
+    a.innerHTML = l.souRecebedor ? `<p style="margin:0"><strong>Emprestado pelo ${esc(l.dono)}</strong> até o fim da temporada ${l.ate}. Não pode ser vendido nem renovado por você.</p>${loanBox(l, 'recebe')}`
+      : l.souDono ? `<p style="margin:0"><strong>Seu jogador, emprestado ao ${esc(l.recebe)}</strong> até o fim da temporada ${l.ate}.</p>${loanBox(l, 'dono')}`
+      : `<p class="small" style="margin:0">Emprestado pelo ${esc(l.dono)} ao ${esc(l.recebe)} até o fim da temporada ${l.ate}. Não pode ser negociado agora.</p>`;
+    return;
+  }
+  const loanToggle = pm.meu ? `<div class="neg-actions" style="align-items:center"><button class="btn" id="pmLoanList">${pm.disponivelEmprestimo ? 'Tirar da lista de empréstimo' : 'Disponível para empréstimo'}</button>
+    <span class="small muted">${pm.disponivelEmprestimo ? 'Clubes da IA podem pedir emprestado a cada rodada com a janela aberta.' : 'Avisa o mercado que você empresta esse jogador.'}</span></div>` : '';
   if (pm.meu) {
-    a.innerHTML = pm.aVenda !== null
+    a.innerHTML = loanToggle + (pm.aVenda !== null
       ? `<p style="margin:0">À venda por <strong>${brl(pm.aVenda, false)}</strong>. Clubes da IA podem fazer ofertas a cada rodada com a janela aberta.</p>
          <div class="neg-actions"><button class="btn" id="pmUnlist">Tirar da venda</button></div>`
       : `<p class="small muted" style="margin:0">Colocar à venda avisa o mercado. Clubes da IA mandam ofertas pela caixa de mensagens; outros técnicos podem comprar pelo preço pedido.</p>
          <div class="neg-form"><div class="field"><label for="pmPrice">Preço pedido</label><div class="money-input"><span>R$</span><input id="pmPrice" type="number" min="1" step="1" value="${Math.round(pm.valor / 100)}"></div></div>
-         <button class="btn primary" id="pmList">Colocar à venda</button></div>`;
+         <button class="btn primary" id="pmList">Colocar à venda</button></div>`);
     return;
   }
   const w = pm.janela;
@@ -1366,6 +1605,9 @@ function renderPlayerActions() {
       <button class="btn primary" id="pmSend" ${w.open ? '' : 'disabled'}>Enviar proposta</button></div>`;
   else html += `<p class="small" style="margin:0">${pm.clube === null ? 'Sem clube: negocie só o salário.' : pm.donoHumano ? `À venda pelo outro técnico: o passe de ${brl(pm.aVenda, false)} já está acertado, negocie o salário.` : 'Primeiro você negocia o passe com o clube; depois o salário com o jogador. O passe só é pago quando ele assinar.'}</p>
       <button class="btn primary" id="pmStart" ${w.open ? '' : 'disabled'}>${pm.clube === null || pm.donoHumano ? 'Negociar contratação' : 'Fazer oferta ao clube'}</button>`;
+  if (pm.clube !== null) html += pm.pedidoEmprestimo
+    ? `<p class="small" style="margin:0">Seu pedido de empréstimo está aguardando resposta do outro técnico.</p>`
+    : `<div class="neg-actions" style="align-items:center"><button class="btn" id="pmLoan" ${w.open ? '' : 'disabled'}>Pedir emprestado</button><span class="small muted">Combine quem paga o salário e, se quiser, uma compra com valor pré-fixado.</span></div>`;
   a.innerHTML = html;
 }
 $('#pmActions').addEventListener('click', async (e) => {
@@ -1374,6 +1616,9 @@ $('#pmActions').addEventListener('click', async (e) => {
     if (e.target.id === 'pmUnlist') { await api(`/salas/${roomId}/jogadores/${pm.id}/venda`, { method: 'POST', body: { preco: null } }); toast('Retirado da venda.'); openPlayer(pm.id); if (squad) loadSquad(); }
     if (e.target.id === 'pmNeg') { $('#playerModal').hidden = true; openNegotiation(pm.negociacao); }
     if (e.target.id === 'pmStart') { const r = await api(`/salas/${roomId}/jogadores/${pm.id}/interesse`, { method: 'POST', body: {} }); $('#playerModal').hidden = true; showNegotiation(r.negociacao); }
+    if (e.target.id === 'pmLoanList') { await api(`/salas/${roomId}/jogadores/${pm.id}/emprestavel`, { method: 'POST', body: { ativo: !pm.disponivelEmprestimo } }); toast(pm.disponivelEmprestimo ? 'Retirado da lista de empréstimo.' : 'Jogador disponível para empréstimo.'); openPlayer(pm.id); if (tab === 'mercado') renderLoans(); }
+    if (e.target.id === 'pmLoan') { openLoanForm({ mode: 'PEDIR', playerId: pm.id, nome: pm.nome, clube: pm.clube.nome, salario: pm.salario, valor: pm.valor, contratoAte: pm.contratoAte, temporada: pm.temporada, ultimaRodada: pm.ultimaRodada }); }
+    const buy = e.target.closest('[data-buy-loan]'); if (buy) { await buyLoan(buy.dataset.buyLoan); openPlayer(pm.id); }
     if (e.target.id === 'pmSend') { await api(`/salas/${roomId}/jogadores/${pm.id}/interesse`, { method: 'POST', body: { valor: Number($('#pmOffer').value) } }); toast('Proposta enviada. A resposta chega pela caixa de mensagens.'); openPlayer(pm.id); }
   } catch (err) { toast(err.message); }
 });
@@ -1392,12 +1637,15 @@ async function renderMessages() {
     <button type="button" data-msg="${m.id}" aria-expanded="${msgOpen.has(m.id)}"><span class="ic" aria-hidden="true">${MSG_ICON[m.type] ?? '✉️'}</span>
       <span class="t">${esc(m.title)}</span><span class="when">T${m.season} · rod. ${m.round}</span></button>
     ${msgOpen.has(m.id) ? `<div class="body"><p>${esc(m.body)}</p>
-      ${m.offerId ? `<div class="neg-actions"><button class="btn primary" data-offer="${esc(m.offerId)}" data-yes="1">Aceitar proposta</button><button class="btn danger" data-offer="${esc(m.offerId)}" data-yes="0">Recusar</button>${m.playerId ? `<button class="btn" data-player="${m.playerId}">Ver jogador</button>` : ''}</div>`
+      ${m.loanId ? `<div class="neg-actions"><button class="btn primary" data-loan-act="ACEITAR" data-loan="${esc(m.loanId)}">Aceitar empréstimo</button><button class="btn" data-loan-counter="${esc(m.loanId)}">Contraproposta</button><button class="btn danger" data-loan-act="RECUSAR" data-loan="${esc(m.loanId)}">Recusar</button>${m.playerId ? `<button class="btn" data-player="${m.playerId}">Ver jogador</button>` : ''}</div>`
+        : m.offerId ? `<div class="neg-actions"><button class="btn primary" data-offer="${esc(m.offerId)}" data-yes="1">Aceitar proposta</button><button class="btn danger" data-offer="${esc(m.offerId)}" data-yes="0">Recusar</button>${m.playerId ? `<button class="btn" data-player="${m.playerId}">Ver jogador</button>` : ''}</div>`
         : m.negId ? `<button class="btn primary" data-neg="${esc(m.negId)}" style="justify-self:start">Abrir negociação</button>`
         : m.type === 'RENOVACAO' && m.playerId ? `<button class="btn primary" data-renew="${m.playerId}" style="justify-self:start">Negociar renovação</button>` : ''}</div>` : ''}
   </div>`).join('') : '<p class="muted">Nenhuma mensagem aqui.</p>';
 }
 $('#msgList').addEventListener('click', async (e) => {
+  const la = e.target.closest('[data-loan-act]'); if (la) { await answerLoanUI(la.dataset.loan, la.dataset.loanAct); renderMessages(); return; }
+  const lc = e.target.closest('[data-loan-counter]'); if (lc) { await counterLoan(lc.dataset.loanCounter); return; }
   const n = e.target.closest('[data-neg]'); if (n) { openNegotiation(n.dataset.neg); return; }
   const r = e.target.closest('[data-renew]'); if (r) { startRenewal(Number(r.dataset.renew)); return; }
   const pl = e.target.closest('[data-player]'); if (pl) { openPlayer(Number(pl.dataset.player)); return; }
@@ -1476,6 +1724,125 @@ $('#negForm').onsubmit = (e) => { e.preventDefault(); negAct({ acao: 'PROPOR', v
 $('#negAccept').onclick = () => negAct({ acao: 'ACEITAR' });
 $('#negEnd').onclick = () => { if (confirm(neg.tipo === 'RENOVACAO' ? 'Encerrar? O jogador não vai renovar nesta temporada.' : 'Encerrar esta negociação?')) negAct({ acao: 'ENCERRAR' }); };
 $('#negClose').onclick = () => { $('#negModal').hidden = true; if (tab === 'escalacao') loadSquad(); if (tab === 'mensagens') renderMessages(); };
+
+// ========================================================== empréstimos
+let loansData = null, loanCtx = null;
+async function renderLoans() {
+  try { loansData = await api(`/salas/${roomId}/emprestimos`); } catch (e) { return; }
+  const L = loansData;
+  const recv = L.propostas.filter((x) => x.recebida), sent = L.propostas.filter((x) => !x.recebida);
+  const who = (j) => `<button class="name-btn" data-player="${j.id}">${esc(j.nome)}</button> <span class="small muted">${j.pos} · ${j.idade} anos · ${j.ovr}</span>`;
+  const sec = (title, items) => items.length ? `<h4 style="margin:6px 0 0;font:700 13px var(--f-body);text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">${title}</h4><div class="loan-list">${items.join('')}</div>` : '';
+  const html = [
+    sec('Pedidos recebidos', recv.map((x) => `<div class="loan"><div class="ltop"><span>${who(x.jogador)}</span><span class="small muted">responda até a rodada ${x.validaAte}</span></div>
+      <p><strong>${esc(x.recebe)}</strong> quer emprestado: ${esc(x.termos)}.</p>
+      <div class="neg-actions"><button class="btn primary" data-loan-act="ACEITAR" data-loan="${esc(x.id)}">Aceitar</button>${x.deTecnico ? '' : `<button class="btn" data-loan-counter="${esc(x.id)}">Contraproposta</button>`}<button class="btn danger" data-loan-act="RECUSAR" data-loan="${esc(x.id)}">Recusar</button></div></div>`)),
+    sec('Seus pedidos aguardando resposta', sent.map((x) => `<div class="loan"><div class="ltop"><span>${who(x.jogador)}</span><span class="small muted">até a rodada ${x.validaAte}</span></div><p>Pedido ao ${esc(x.dono)}: ${esc(x.termos)}.</p></div>`)),
+    sec('Jogadores que você recebeu', L.recebidos.map((l) => `<div class="loan"><div class="ltop"><span>${who(l.jogador)}</span><span class="small muted">do ${esc(l.dono)} até T${l.ate}</span></div>${loanBox(l, 'recebe').replace(/^<div class="loan">|<\/div>$/g, '')}</div>`)),
+    sec('Jogadores que você cedeu', L.cedidos.map((l) => `<div class="loan"><div class="ltop"><span>${who(l.jogador)}</span><span class="small muted">no ${esc(l.recebe)} até T${l.ate}</span></div>${loanBox(l, 'dono').replace(/^<div class="loan">|<\/div>$/g, '')}</div>`)),
+    L.disponiveis.length ? `<p class="small" style="margin:6px 0 0"><strong>Disponíveis para empréstimo:</strong> ${L.disponiveis.map((p) => `<button class="link-btn" data-player="${p.id}">${esc(p.nome)}</button> (${p.pos}, ${p.ovr})`).join(', ')}.</p>` : '',
+  ].join('');
+  $('#loansBody').innerHTML = html || `<p class="muted small" style="margin:0">Nenhum empréstimo em andamento. ${L.janela.open ? '' : esc(L.janela.text)}</p>`;
+}
+$('#loansBody').addEventListener('click', async (e) => {
+  const la = e.target.closest('[data-loan-act]'); if (la) { await answerLoanUI(la.dataset.loan, la.dataset.loanAct); return; }
+  const lc = e.target.closest('[data-loan-counter]'); if (lc) { await counterLoan(lc.dataset.loanCounter); return; }
+  const b = e.target.closest('[data-buy-loan]'); if (b) { await buyLoan(b.dataset.buyLoan); return; }
+  const pl = e.target.closest('[data-player]'); if (pl) openPlayer(Number(pl.dataset.player));
+});
+async function answerLoanUI(id, acao) {
+  if (acao === 'ACEITAR' && !confirm('Aceitar o empréstimo nessas condições?')) return;
+  try { const r = await api(`/salas/${roomId}/emprestimos/${encodeURIComponent(id)}`, { method: 'POST', body: { acao } }); toast(r.texto); afterLoanChange(); }
+  catch (err) { toast(err.message); }
+}
+async function counterLoan(id) {
+  try { loansData = await api(`/salas/${roomId}/emprestimos`); } catch (e) { toast(e.message); return; }
+  const x = loansData.propostas.find((p) => p.id === id && p.recebida);
+  if (!x) { toast('Esse pedido já foi respondido ou expirou.'); return; }
+  if (x.deTecnico) { toast('Com outro técnico não há contraproposta: recuse e combine com ele.'); return; }
+  openLoanForm({ mode: 'CONTRA', propId: id, playerId: x.jogador.id, nome: x.jogador.nome, clube: x.recebe, salario: x.jogador.salario, valor: x.jogador.valor,
+    contratoAte: null, temporada: loansData.temporada, ultimaRodada: loansData.ultimaRodada, inicial: x.condicoes });
+}
+async function buyLoan(id) {
+  if (!confirm('Exercer a opção de compra? O valor é pago agora e o jogador fica em definitivo.')) return;
+  try { await api(`/salas/${roomId}/emprestimos/${encodeURIComponent(id)}/comprar`, { method: 'POST' }); toast('Compra concluída.'); afterLoanChange(); }
+  catch (err) { toast(err.message); }
+}
+function afterLoanChange() { squad = null; load(); if (tab === 'mercado') renderLoans(); if (tab === 'mensagens') renderMessages(); if (tab === 'escalacao') loadSquad(); }
+
+function openLoanForm(ctx) {
+  loanCtx = ctx;
+  const pedir = ctx.mode === 'PEDIR';
+  $('#loanTitle').textContent = `${pedir ? 'Pedir emprestado' : 'Contraproposta'} · ${ctx.nome}`;
+  $('#loanIntro').textContent = pedir
+    ? `O contrato continua com o ${ctx.clube}. Salário de ${brl(ctx.salario, false)}/sem., valor de mercado ${brl(ctx.valor, false)}.${ctx.clube && !pm?.donoHumano ? ' Clubes da IA respondem na hora.' : ''}`
+    : `Suas condições para emprestar ao ${ctx.clube}. Salário de ${brl(ctx.salario, false)}/sem., valor de mercado ${brl(ctx.valor, false)}.`;
+  const T = ctx.temporada;
+  $('#lnUntil').innerHTML = [T, T + 1].map((t) => {
+    const off = (t === T && ctx.ultimaRodada) || (ctx.contratoAte !== null && t > ctx.contratoAte);
+    return `<option value="${t}" ${off ? 'disabled' : ''}>Até o fim da temporada ${t}${off && ctx.contratoAte !== null && t > ctx.contratoAte ? ' (contrato acaba antes)' : ''}</option>`;
+  }).join('');
+  $('#lnShareLabel').textContent = pedir ? 'Quanto do salário você paga' : `Quanto do salário o ${ctx.clube} paga`;
+  $('#lnShare').innerHTML = [100, 75, 50, 25, 0].map((v) => `<option value="${v}">${pedir
+    ? (v === 100 ? 'Você paga tudo (100%)' : v === 0 ? 'O dono paga tudo (0%)' : `Você ${v}%, o dono ${100 - v}%`)
+    : (v === 100 ? `O ${ctx.clube} paga tudo` : v === 0 ? 'Você continua pagando tudo' : `Eles ${v}%, você ${100 - v}%`)}</option>`).join('');
+  const i = ctx.inicial;
+  $('#lnUntil').value = String(i?.ate ?? ($('#lnUntil').querySelector('option:not([disabled])')?.value ?? T));
+  $('#lnShare').value = String(i?.salario ?? (pedir ? 75 : 100));
+  $('#lnFee').value = Math.round(i?.taxa ?? 0);
+  $('#lnBuy').checked = !!i?.compra;
+  $('#lnPrice').value = Math.round(i?.compra?.valor ?? ctx.valor * 1.2 / 100);
+  $('#lnGoal').value = i?.compra?.meta ?? 'JOGOS';
+  $('#lnTarget').value = i?.compra?.alvo ?? 10;
+  $('#lnMandatory').checked = !!i?.compra?.obrigatoria;
+  $('#loanSubmit').textContent = pedir ? 'Enviar proposta' : 'Enviar contraproposta';
+  $('#loanResult').innerHTML = '';
+  syncLoanForm();
+  $('#playerModal').hidden = true;
+  $('#loanModal').hidden = false;
+}
+function loanBody() {
+  const buy = $('#lnBuy').checked;
+  return { ate: Number($('#lnUntil').value), salario: Number($('#lnShare').value), taxa: Number($('#lnFee').value) || 0,
+    compra: buy ? { valor: Number($('#lnPrice').value), meta: $('#lnGoal').value, alvo: Number($('#lnTarget').value), obrigatoria: $('#lnMandatory').checked } : null };
+}
+function syncLoanForm() {
+  const c = loanCtx; if (!c) return;
+  const buy = $('#lnBuy').checked, goal = $('#lnGoal').value;
+  $('#lnBuyFields').hidden = !buy;
+  $('#lnTargetF').hidden = goal === 'NENHUMA';
+  $('#lnTargetLabel').textContent = goal === 'JOGOS' ? 'Jogos' : goal === 'GOLS' ? 'Gols' : 'Nota média mínima';
+  $('#lnTarget').step = goal === 'NOTA' ? '0.1' : '1';
+  $('#lnTarget').min = goal === 'NOTA' ? '5' : '1';
+  const b = loanBody(), pedir = c.mode === 'PEDIR';
+  const recv = Math.round(c.salario * b.salario / 100), own = c.salario - recv;
+  const lines = [
+    pedir ? `Você paga <strong>${brl(recv, false)}</strong>/sem. e o ${esc(c.clube)} paga <strong>${brl(own, false)}</strong>/sem.`
+      : `O ${esc(c.clube)} paga <strong>${brl(recv, false)}</strong>/sem. e você continua pagando <strong>${brl(own, false)}</strong>/sem.`,
+    b.taxa ? `Taxa de empréstimo: <strong>${brl(b.taxa * 100, false)}</strong>, paga na assinatura.` : 'Sem taxa de empréstimo.',
+  ];
+  if (b.compra) {
+    const g = b.compra.meta === 'NENHUMA' ? 'sem meta' : b.compra.meta === 'NOTA' ? `se tiver nota média ${Number(b.compra.alvo).toFixed(1)} ou mais` : `se fizer ${b.compra.alvo} ${b.compra.meta === 'JOGOS' ? 'jogos' : 'gols'}`;
+    const ratio = b.compra.valor * 100 / c.valor;
+    lines.push(`${b.compra.obrigatoria ? 'Compra obrigatória' : 'Opção de compra'} por <strong>${brl(b.compra.valor * 100, false)}</strong> ${g} <span class="muted">(${Math.round(ratio * 100)}% do valor de mercado)</span>.`);
+  }
+  $('#loanSum').innerHTML = lines.map((l) => `<span>${l}</span>`).join('');
+}
+$('#loanForm').addEventListener('input', syncLoanForm);
+$('#loanForm').addEventListener('change', syncLoanForm);
+$('#loanClose').onclick = () => { $('#loanModal').hidden = true; };
+$('#loanForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const c = loanCtx, body = loanBody();
+  try {
+    const r = c.mode === 'PEDIR'
+      ? await api(`/salas/${roomId}/jogadores/${c.playerId}/emprestimo`, { method: 'POST', body })
+      : await api(`/salas/${roomId}/emprestimos/${encodeURIComponent(c.propId)}`, { method: 'POST', body: { acao: 'CONTRA', condicoes: body } });
+    if (r.status === 'ACEITA' || (r.status === 'PENDENTE' && c.mode === 'PEDIR')) { $('#loanModal').hidden = true; toast(r.texto); afterLoanChange(); return; }
+    $('#loanResult').innerHTML = `<div class="msg ${r.status === 'RECUSADA' ? 'err' : 'info'}">${esc(r.texto)}</div>`;
+    if (r.status === 'RECUSADA' && c.mode === 'CONTRA') { $('#loanSubmit').disabled = true; setTimeout(() => { $('#loanSubmit').disabled = false; $('#loanModal').hidden = true; afterLoanChange(); }, 2500); }
+  } catch (err) { $('#loanResult').innerHTML = `<div class="msg err">${esc(err.message)}</div>`; }
+};
 
 // ========================================================== patrocínios
 async function renderSponsors() {
@@ -1558,7 +1925,7 @@ function showTab(name) {
   if (name === 'base') renderYouth();
   if (name === 'sala') renderRoom();
   if (name === 'mensagens') renderMessages();
-  if (name === 'mercado' && !market) searchMarket();
+  if (name === 'mercado') { renderLoans(); if (!market) searchMarket(); }
 }
 $('#tabs').onclick = (e) => { const b = e.target.closest('button'); if (b) showTab(b.dataset.tab); };
 
