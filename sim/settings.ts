@@ -93,9 +93,10 @@ export const DIFFICULTY: Record<Difficulty, DifficultyModifiers> = {
 // servidor; o cliente revela os eventos no ritmo escolhido.
 export const MS_PER_MATCH_MINUTE: Record<MatchSpeed, number> = {
   INSTANTANEA: 0,    // mostra o placar final direto
-  RAPIDA: 400,       // ~40 s por jogo
-  NORMAL: 1200,      // ~2 min por jogo
-  LENTA: 3000,       // ~4,5 min por jogo
+  // 99 minutos de jogo (90 + acréscimos); cada velocidade é 15 s mais curta que a versão anterior
+  RAPIDA: 250,       // ~25 s por jogo
+  NORMAL: 1050,      // ~1 min 45 s por jogo
+  LENTA: 2850,       // ~4 min 40 s por jogo
 };
 
 /** Momento (ms desde o início da exibição) em que cada evento aparece. */

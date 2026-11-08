@@ -178,7 +178,7 @@ O dono da sala edita tudo no lobby (veja `web/criar-sala.html`). O JSON fica em 
 | Estrutura | divisões (1–4), clubes por divisão, quantos sobem/descem, onde os humanos começam |
 | Regras | substituições (3 ou 5), elenco mínimo/máximo, janelas de transferência, teto salarial, fair play financeiro, lesões, peneira da base |
 | Preparação | **tempo limite** entre rodadas (1 min a 24 h, ou sem limite), espera mínima, quando parar de esperar quem some (AFK) |
-| Velocidade | instantânea, rápida (~40 s), normal (~2 min) ou lenta (~4,5 min) por jogo ao vivo |
+| Velocidade | instantânea, rápida (~25 s), normal (~1 min 45 s) ou lenta (~4 min 40 s) por jogo ao vivo |
 | Dificuldade | caixa inicial, força da IA, valor dos patrocínios, ganho de torcida, cobrança da torcida, lesões, salários pedidos |
 
 - **Todos prontos:** a rodada roda quando todos os técnicos ativos clicam em "Pronto"
