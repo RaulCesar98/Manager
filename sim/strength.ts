@@ -90,7 +90,8 @@ export function sectorStrength(
   // Técnico: tática bem montada vale até +6%
   const coach = 1 + team.staff.coachTactics / 1700;
   // Mando de campo: 1% a 6% dependendo do humor da torcida
-  const home = isHome ? 1.01 + 0.05 * (team.fanMood / 100) : 1;
+  // Torcida no dia: mosaico empurra, vaia pesa (só para o mandante)
+  const home = isHome ? (1.01 + 0.05 * (team.fanMood / 100)) * (1 + (team.crowdBoost ?? 0)) : 1;
   // Mentalidade: troca defesa por ataque
   const m = team.mentality;
   const attMul = 1 + 0.07 * m;

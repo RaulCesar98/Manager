@@ -21,6 +21,7 @@ import {
 } from './office.ts';
 import type { SponsorSlot } from '../sim/fans.ts';
 import { cancelProject, extraIntake, gatePreview, promoteYouth, releaseYouth, setTicketPrices, stadiumView, startProject, youthView } from './club.ts';
+import { crowdView } from './crowd.ts';
 import { answerLoan, exerciseBuy, loanOf, loansView, playerLoanInfo, proposeLoan, setLoanListed } from './loans.ts';
 import { answerHumanOffer, currentValue, listingPrice, playerDetail, searchPlayers, setForSale, startInterest, type SearchFilters } from './market.ts';
 import {
@@ -157,6 +158,7 @@ function dashboardView(room: Room, user: User, clubId: number) {
       folha: squad.reduce((a, p) => a + p.weeklySalary, 0),
     },
     financas: { saldoRodada: inc - exp, torcidaVariacao: hist.length > 1 ? hist[hist.length - 1] - hist[hist.length - 2] : 0 },
+    torcida: crowdView(room, clubId),
     mensagens: inboxOf(room, user.id).filter((m) => !m.read).slice(0, 3).map((m) => ({ id: m.id, tipo: m.type, titulo: m.title })),
     aoVivo,
   };

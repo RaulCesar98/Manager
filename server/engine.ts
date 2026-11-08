@@ -17,6 +17,7 @@ import {
 import { overall, positionFactor, roleRating } from '../sim/strength.ts';
 import { expireContracts, officeAfterRound, seasonStartMessages, sendToClub, type Message, type Negotiation } from './office.ts';
 import { marketAfterRound, marketEnv, type HumanOffer, type Listing } from './market.ts';
+import { crowdAfterRound, crowdBoost, crowdForRound, type CrowdEvent, type CrowdRound } from './crowd.ts';
 import { loanWageDelta, loansAfterRound, loansSeasonEnd, type Loan, type LoanProposal } from './loans.ts';
 import { clubAfterRound, clubSeasonStart, gateContext, medicalBonus, type ClubExtra, type Project, type YouthInfo } from './club.ts';
 import type { MatchEvent, MatchResult, Position, Staff, TeamSetup } from '../sim/types.ts';
@@ -118,6 +119,8 @@ export interface Room {
   loanProposals?: LoanProposal[];       // pedidos de empréstimo
   loanListed?: number[];                // jogadores dos humanos disponíveis para empréstimo
   loanRefusals?: Record<string, number>; // pedidos recusados na temporada (temporada:clube:jogador)
+  crowdRound?: CrowdRound;              // mosaicos e vaias decididos para a rodada
+  crowdLog?: Record<number, CrowdEvent[]>; // o que a torcida fez (clubes humanos)
 }
 
 /** Corrige números quebrados de salas antigas (humor, condição, atributos sempre inteiros). */
@@ -396,8 +399,9 @@ function newSims(room: Room, round: number) {
   const humans = humanClubIds(room);
   const fixtures = room.world.fixtures.filter((x) => x.round === round);
   const opts = matchOptions(room);
+  const crowd = crowdForRound(room, round, fixtures);
   const sims = fixtures.map((f) => new MatchSim(
-    buildTeam(room, clubById(room, f.homeId), !humans.has(f.homeId)),
+    { ...buildTeam(room, clubById(room, f.homeId), !humans.has(f.homeId)), crowdBoost: crowdBoost(crowd, f.homeId) },
     buildTeam(room, clubById(room, f.awayId), !humans.has(f.awayId)),
     matchSeed(room, round, f), opts));
   return { fixtures, sims };
@@ -630,6 +634,7 @@ function applyRoundResults(room: Room, now: number, round: number, fixtures: Gen
     else if (before >= 40 && after < 40) sendToClub(room, id, { type: 'TORCIDA', title: 'Torcida insatisfeita', body: `O humor da torcida caiu para ${after}. Motivos: ${why}. Bons resultados ou ações de marketing ajudam a recuperar.` });
     else if (before < 80 && after >= 80) sendToClub(room, id, { type: 'TORCIDA', title: 'Torcida empolgada', body: `O humor chegou a ${after}. Bom momento para lotar o estádio e vender sócios.` });
   }
+  crowdAfterRound(room, round);
   officeAfterRound(room);
   marketAfterRound(room);
   loansAfterRound(room);

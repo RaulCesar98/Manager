@@ -56,6 +56,17 @@ com mínimo de jogos de 40% das rodadas).
 conforme a liderança (idade e popularidade). Se sair, a faixa passa para o maior líder em campo.
 Melhor líder em vez do pior ≈ +2,5 pontos numa temporada de 38 rodadas.
 
+**Torcida (`server/crowd.ts`):** o humor (0 a 100) muda o comportamento da torcida. Abaixo de
+25 ela vaia o time em casa (−3% de força). Abaixo de 30 há risco de agressão a jogadores
+(4% a 26% por rodada; pode lesionar, derruba a moral do elenco e a reputação). Abaixo de 20 há
+risco de invasão ao CT (3% a 20%; conservação do CT cai, conserto custa caro, treino suspenso).
+Derrota na rodada aumenta esses riscos em 50%; vitória os reduz pela metade. Acima de 65 vêm o
+apoio (treino aberto lotado, festa no aeroporto: moral e forma sobem) e os mosaicos nos jogos
+em casa (+3% de força); acima de 80 e em clássicos eles ficam frequentes. O mosaico é desenhado
+com as cores do clube (sigla, escudo, listras, estrelas ou diagonal), cartão por cartão, e
+aparece na mensagem e no quadro "Torcida" do Início, com as chances da próxima rodada.
+Agressões e invasões só acontecem com clubes de técnicos.
+
 **Rodada ao vivo:** o servidor avança os jogos conforme o relógio (velocidade da sala).
 Substituições e mudanças de postura entram no minuto em que são feitas e ficam gravadas;
 se o servidor reiniciar no meio da rodada, os jogos são reconstruídos iguais (mesma
@@ -90,6 +101,7 @@ server/engine.ts         regras do jogo: salas, escalação, rodadas, temporadas
 server/office.ts         caixa de mensagens, negociações (renovação, patrocínio, passe, venda), fim de contratos
 server/market.ts         mercado: busca, ficha, compra, venda, propostas entre técnicos, janela
 server/loans.ts          empréstimos: divisão de salário, taxa, compra pré-fixada por meta
+server/crowd.ts          torcida pelo humor: vaias, agressões, invasão ao CT, apoio, mosaicos
 server/club.ts           estádio (ingressos, obras), instalações, divisão de base, evolução semanal
 server/store.ts          salvamento em arquivos JSON (troque por PostgreSQL para hospedar)
 web/index.html           login, cadastro e minhas salas

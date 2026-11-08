@@ -18,6 +18,7 @@ export interface Message {
   id: number; at: number; season: number; round: number;
   type: MessageType; title: string; body: string; read: boolean;
   negId?: string; playerId?: number; offerId?: string; loanId?: string;
+  mosaic?: import('./crowd.ts').MosaicDesign;   // imagem do mosaico (mensagens da torcida)
 }
 
 export interface Terms { amount: number; seasons: number }

@@ -51,6 +51,7 @@ export interface TeamSetup {
   isAI?: boolean;            // clube sem dono humano (recebe o modificador de dificuldade)
   autoSubs?: boolean;        // auxiliar faz trocas por cansaço (padrão: sim)
   captainId?: number;        // capitão escolhido (se não vier, o maior líder entre os titulares)
+  crowdBoost?: number;       // ajuste do mando pela torcida no dia (mosaico +0.03, vaia -0.03)
 }
 
 export type EventType =
