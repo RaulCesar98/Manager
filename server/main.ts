@@ -8,12 +8,12 @@ import { readFile } from 'node:fs/promises';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { extname, join, normalize, resolve } from 'node:path';
 import { CAMPAIGNS, type CampaignKind } from '../sim/fans.ts';
-import type { RoomSettings } from '../sim/settings.ts';
+import { normalizeSettings, validateSettings, type RoomSettings } from '../sim/settings.ts';
 import { overall, positionFactor, roleRating } from '../sim/strength.ts';
 import { leadership } from '../sim/match.ts';
 import {
   BENCH_SIZE, FORMATIONS, GameError, activeCampaigns, autoTactics, clubById, createRoom, freeClubs,
-  joinRoom, lastRound, liveAction, liveSims, liveTick, normalizeRoom, pickClub, readiness, seasonOver, setReady, setTactics, squadOf, standings, startCampaign,
+  joinRoom, lastRound, news, liveAction, liveSims, liveTick, normalizeRoom, pickClub, readiness, seasonOver, setReady, setTactics, squadOf, standings, startCampaign,
   statusOf, stopCampaign, tick, type Mentality, type Room,
 } from './engine.ts';
 import {
@@ -429,6 +429,77 @@ route('POST', '/api/salas', async (req, res) => {
   }
   saveRoom(room);
   send(res, 200, { id: room.id, codigo: room.code });
+});
+
+// ===================================================== configurações (admin)
+const SPEEDS = ['INSTANTANEA', 'RAPIDA', 'NORMAL', 'LENTA'] as const;
+const DIFFS = ['FACIL', 'NORMAL', 'DIFICIL', 'LENDARIO'] as const;
+/** O dono da sala muda as configurações. Estrutura (divisões e clubes) não muda depois de criada. */
+route('PUT', '/api/salas/:id/configuracoes', async (req, res, [id]) => {
+  const u = requireUser(req);
+  const room = roomById(id);
+  requireMember(room, u);
+  if (room!.ownerId !== u.id) throw new HttpError(403, 'Só o administrador da sala pode mudar as configurações.');
+  if (room!.live) throw new HttpError(400, 'Espere a rodada terminar para mudar as configurações.');
+  const { settings: b, senha } = await readBody(req);
+  if (!b || typeof b !== 'object') throw new HttpError(400, 'Configurações ausentes.');
+  const cur = room!.settings;
+  const n: RoomSettings = structuredClone(cur);
+  const int = (v: unknown, fb: number) => (v === undefined || v === null || v === '' ? fb : Math.round(Number(v)));
+  const bool = (v: unknown, fb: boolean) => (v === undefined ? fb : !!v);
+  if (b.name !== undefined) n.name = String(b.name).trim();
+  n.maxHumans = int(b.maxHumans, cur.maxHumans);
+  n.isPrivate = bool(b.isPrivate, cur.isPrivate);
+  if (b.matchSpeed !== undefined) { if (!SPEEDS.includes(b.matchSpeed)) throw new HttpError(400, 'Velocidade inválida.'); n.matchSpeed = b.matchSpeed; }
+  if (b.difficulty !== undefined) { if (!DIFFS.includes(b.difficulty)) throw new HttpError(400, 'Dificuldade inválida.'); n.difficulty = b.difficulty; }
+  const p = b.pacing ?? {};
+  n.pacing = {
+    prepTimeoutMinutes: p.prepTimeoutMinutes === null ? null : int(p.prepTimeoutMinutes, cur.pacing.prepTimeoutMinutes ?? 10),
+    minPrepSeconds: int(p.minPrepSeconds, cur.pacing.minPrepSeconds),
+    afkAfterMisses: int(p.afkAfterMisses, cur.pacing.afkAfterMisses),
+  };
+  if (p.prepTimeoutMinutes === undefined) n.pacing.prepTimeoutMinutes = cur.pacing.prepTimeoutMinutes;
+  const r = b.rules ?? {};
+  const subs = int(r.maxSubs, cur.rules.maxSubs);
+  if (subs !== 3 && subs !== 5) throw new HttpError(400, 'Substituições: 3 ou 5.');
+  if (r.transferWindow !== undefined && !['SEMPRE', 'JANELAS'].includes(r.transferWindow)) throw new HttpError(400, 'Janela inválida.');
+  n.rules = {
+    ...cur.rules, maxSubs: subs, squadMin: int(r.squadMin, cur.rules.squadMin), squadMax: int(r.squadMax, cur.rules.squadMax),
+    transferWindow: r.transferWindow ?? cur.rules.transferWindow, windowRounds: int(r.windowRounds, cur.rules.windowRounds),
+    blockSpendingWhenNegative: bool(r.blockSpendingWhenNegative, cur.rules.blockSpendingWhenNegative),
+    injuries: bool(r.injuries, cur.rules.injuries), youthIntakePerSeason: bool(r.youthIntakePerSeason, cur.rules.youthIntakePerSeason),
+  };
+  const st = b.structure ?? {};
+  if (cur.structure.divisions > 1 && st.promotion !== undefined) {
+    const k = int(st.promotion, cur.structure.promotion);
+    n.structure = { ...cur.structure, promotion: k, relegation: k };
+  }
+  // vagas: não pode ficar abaixo de quem já está na sala; não dá para virar solo com gente dentro
+  if (n.maxHumans < room!.members.length) throw new HttpError(400, `A sala já tem ${room!.members.length} técnicos: o mínimo de vagas é ${room!.members.length}.`);
+  const errors = validateSettings(n).filter((e) => !e.startsWith('Começando na última divisão'));   // regra só vale para a criação
+  if (errors.length) throw new HttpError(400, errors.join(' '));
+  // senha
+  let pw = room!.passwordHash;
+  if (!n.isPrivate || n.maxHumans === 1) pw = null;
+  else if (typeof senha === 'string' && senha.length) { if (senha.length < 4) throw new HttpError(400, 'A senha precisa de pelo menos 4 caracteres.'); const h = hashPassword(senha); pw = `${h.salt}:${h.hash}`; }
+  else if (!pw) throw new HttpError(400, 'Sala privada precisa de senha.');
+  const final = normalizeSettings(n);
+  // o que mudou (vai para as notícias da liga)
+  const L: [string, (x: RoomSettings) => unknown][] = [
+    ['nome', (x) => x.name], ['vagas', (x) => x.maxHumans], ['sala privada', (x) => x.isPrivate], ['velocidade', (x) => x.matchSpeed],
+    ['dificuldade', (x) => x.difficulty], ['tempo limite', (x) => x.pacing.prepTimeoutMinutes], ['espera mínima', (x) => x.pacing.minPrepSeconds],
+    ['ausência (AFK)', (x) => x.pacing.afkAfterMisses], ['substituições', (x) => x.rules.maxSubs], ['elenco mínimo', (x) => x.rules.squadMin],
+    ['elenco máximo', (x) => x.rules.squadMax], ['janela de transferências', (x) => `${x.rules.transferWindow}${x.rules.windowRounds}`],
+    ['bloqueio com caixa negativo', (x) => x.rules.blockSpendingWhenNegative], ['lesões', (x) => x.rules.injuries],
+    ['peneira anual', (x) => x.rules.youthIntakePerSeason], ['sobem e descem', (x) => x.structure.promotion],
+  ];
+  const changed = L.filter(([, g]) => g(cur) !== g(final)).map(([k]) => k);
+  if (pw !== room!.passwordHash && final.isPrivate && room!.passwordHash) changed.push('senha');
+  room!.settings = final;
+  room!.passwordHash = pw;
+  if (changed.length) news(room!, `O administrador mudou as configurações: ${changed.join(', ')}.`);
+  saveRoom(room!);
+  send(res, 200, { mudancas: changed });
 });
 
 route('POST', '/api/salas/entrar', async (req, res) => {

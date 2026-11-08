@@ -67,6 +67,14 @@ com as cores do clube (sigla, escudo, listras, estrelas ou diagonal), cartão po
 aparece na mensagem e no quadro "Torcida" do Início, com as chances da próxima rodada.
 Agressões e invasões só acontecem com clubes de técnicos.
 
+**Configurações da sala (aba Sala):** o administrador (quem criou a sala) muda nome, vagas,
+senha/sala privada, tempo limite, espera mínima, AFK, velocidade da partida, dificuldade,
+substituições, lesões, peneira, elenco mínimo/máximo, janela de transferências, bloqueio com
+caixa negativo e quantos sobem e descem (vale no fim da temporada). Número de divisões e de
+clubes não muda depois de criada. Não dá para salvar durante uma rodada ao vivo, nem deixar
+menos vagas que técnicos na sala. As mudanças aparecem nas notícias da liga; os outros técnicos
+veem as regras atualizadas na mesma aba.
+
 **Efeitos sonoros (`web/sons.js`):** gerados na hora com Web Audio, sem arquivos de áudio.
 Na partida ao vivo: apito inicial, de intervalo e final; explosão da torcida e corneta nos gols
 do seu time, lamento nos gols sofridos, "plim" discreto nos gols de outros jogos da divisão,

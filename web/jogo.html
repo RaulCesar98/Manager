@@ -312,6 +312,16 @@ button.board:hover { box-shadow: 0 0 0 2px var(--card); }
 .rank-mood.good i { background: var(--good); } .rank-mood.warn i { background: var(--card); } .rank-mood.bad i { background: var(--bad); }
 .medal { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; font: 800 12px var(--f-body); background: var(--line); color: var(--ink); }
 .medal.m1 { background: #e8c547; color: #2a2100; } .medal.m2 { background: #c9d0d6; color: #1b2228; } .medal.m3 { background: #c98b55; color: #2a1606; }
+.admin-card { grid-column: 1 / -1; }
+.admin-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); align-items: start; }
+.admin-grid fieldset { border: 1px solid var(--line); border-radius: var(--r); padding: 10px 12px 12px; margin: 0; display: grid; gap: 10px; min-width: 0; }
+.admin-grid legend { padding: 0 6px; font: 700 12px var(--f-body); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.admin-grid .row2 { display: grid; gap: 10px; grid-template-columns: 1fr 1fr; }
+.admin-grid .chk { display: flex; gap: 8px; align-items: center; text-transform: none; letter-spacing: 0; font: 500 14px var(--f-body); color: var(--ink); }
+.admin-grid .hint { margin: 0; font-size: 12px; color: var(--muted); }
+.admin-grid .locked { display: grid; gap: 4px; font-size: 13px; }
+.admin-grid .locked span { display: flex; justify-content: space-between; gap: 8px; border-bottom: 1px dashed var(--line); padding: 3px 0; }
+.admin-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .loan-sum { padding: 10px 12px; border-radius: var(--r); background: var(--bg); font-size: 14px; display: grid; gap: 2px; }
 </style>
 
@@ -529,6 +539,7 @@ button.board:hover { box-shadow: 0 0 0 2px var(--card); }
     </div>
 
     <div data-view="sala" hidden class="grid">
+      <form class="card admin-card" id="adminCard" hidden novalidate></form>
       <div class="card" id="inviteCard"></div>
       <div class="card"><h3>Técnicos</h3><ul class="list" id="members"></ul></div>
       <div class="card"><h3>Regras</h3><ul class="list small" id="rules"></ul></div>
@@ -2122,8 +2133,117 @@ $('#sponsorSlots').onclick = async (e) => {
 };
 
 // ================================================================ sala
+// ===================================================== configurações (admin)
+const DIFF_LABEL = { FACIL: 'Fácil', NORMAL: 'Normal', DIFICIL: 'Difícil', LENDARIO: 'Lendário' };
+const SPEED_LABEL = { INSTANTANEA: 'Instantânea', RAPIDA: 'Rápida (~40 s por jogo)', NORMAL: 'Normal (~2 min)', LENTA: 'Lenta (~4,5 min)' };
+const START_LABEL = { ULTIMA_DIVISAO: 'Na última divisão', QUALQUER: 'Em qualquer divisão', SORTEIO: 'Clube sorteado' };
+let adminDirty = false;
+function renderAdmin() {
+  const s = S, st = s.sala.settings, f = $('#adminCard');
+  f.hidden = !s.sala.dono;
+  if (!s.sala.dono || adminDirty) return;     // não apaga o que o admin está digitando
+  const p = st.pacing, r = st.rules, x = st.structure;
+  const opt = (map, cur) => Object.entries(map).map(([k, v]) => `<option value="${k}" ${k === cur ? 'selected' : ''}>${esc(v)}</option>`).join('');
+  const multi = x.divisions > 1;
+  f.innerHTML = `<header class="row-head"><h3>Configurações da sala</h3><span class="small muted">Você é o administrador. As mudanças valem na próxima rodada e aparecem nas notícias da liga.</span></header>
+    ${s.aoVivo ? '<div class="msg info">A rodada está em andamento. Espere ela terminar para salvar.</div>' : ''}
+    <div class="admin-grid">
+      <fieldset><legend>Geral</legend>
+        <div class="field"><label for="cfName">Nome da sala</label><input id="cfName" type="text" maxlength="40" value="${esc(st.name)}"></div>
+        <div class="field"><label for="cfMax">Técnicos humanos (máx.)</label><input id="cfMax" type="number" min="${Math.max(1, s.membros.length)}" max="40" value="${st.maxHumans}">
+          <p class="hint">A sala tem ${s.membros.length} técnico${s.membros.length > 1 ? 's' : ''}. ${st.maxHumans === 1 ? 'Com 1, é modo solo.' : ''}</p></div>
+        <p class="hint" id="cfSoloHint">Modo solo: sem senha nem convite, e a rodada sempre espera você clicar Pronto.</p>
+        <label class="chk" id="cfPrivL"><input type="checkbox" id="cfPriv" ${st.isPrivate ? 'checked' : ''}> Sala privada (pede senha para entrar)</label>
+        <div class="field" id="cfPwF" ${st.isPrivate ? '' : 'hidden'}><label for="cfPw">${st.isPrivate ? 'Nova senha (deixe em branco para manter)' : 'Senha da sala'}</label><input id="cfPw" type="password" autocomplete="new-password" minlength="4"></div>
+      </fieldset>
+      <fieldset><legend>Ritmo das rodadas</legend>
+        <label class="chk" id="cfNoLimitL"><input type="checkbox" id="cfNoLimit" ${p.prepTimeoutMinutes === null ? 'checked' : ''}> Sem tempo limite (espera todos clicarem Pronto)</label>
+        <div class="row2">
+          <div class="field" id="cfTimeF" ${p.prepTimeoutMinutes === null ? 'hidden' : ''}><label for="cfTime">Tempo limite (min)</label><input id="cfTime" type="number" min="1" max="1440" value="${p.prepTimeoutMinutes ?? 10}"></div>
+          <div class="field"><label for="cfMin">Espera mínima (s)</label><input id="cfMin" type="number" min="0" max="600" value="${p.minPrepSeconds}"></div>
+        </div>
+        <div class="field" id="cfAfkF" ${p.prepTimeoutMinutes === null ? 'hidden' : ''}><label for="cfAfk">Parar de esperar quem some</label>
+          <select id="cfAfk">${[0, 1, 2, 3, 4, 5, 10].map((n) => `<option value="${n}" ${n === p.afkAfterMisses ? 'selected' : ''}>${n ? `Depois de ${n} prazo${n > 1 ? 's' : ''} perdido${n > 1 ? 's' : ''}` : 'Nunca'}</option>`).join('')}</select></div>
+        <div class="field"><label for="cfSpeed">Velocidade da partida</label><select id="cfSpeed">${opt(SPEED_LABEL, st.matchSpeed)}</select></div>
+      </fieldset>
+      <fieldset><legend>Jogo</legend>
+        <div class="field"><label for="cfDiff">Dificuldade</label><select id="cfDiff">${opt(DIFF_LABEL, st.difficulty)}</select>
+          <p class="hint">Vale para a sala inteira: força da IA, salários pedidos, patrocínios, lesões e paciência da torcida.</p></div>
+        <div class="field"><label for="cfSubs">Substituições por jogo</label><select id="cfSubs">${[3, 5].map((n) => `<option ${n === r.maxSubs ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
+        <label class="chk"><input type="checkbox" id="cfInj" ${r.injuries ? 'checked' : ''}> Lesões</label>
+        <label class="chk"><input type="checkbox" id="cfYouth" ${r.youthIntakePerSeason ? 'checked' : ''}> Peneira da base a cada temporada</label>
+      </fieldset>
+      <fieldset><legend>Elenco e mercado</legend>
+        <div class="row2">
+          <div class="field"><label for="cfSqMin">Elenco mínimo</label><input id="cfSqMin" type="number" min="16" max="40" value="${r.squadMin}"></div>
+          <div class="field"><label for="cfSqMax">Elenco máximo</label><input id="cfSqMax" type="number" min="16" max="40" value="${r.squadMax}"></div>
+        </div>
+        <div class="field"><label for="cfWin">Janela de transferências</label><select id="cfWin"><option value="JANELAS" ${r.transferWindow === 'JANELAS' ? 'selected' : ''}>Em janelas</option><option value="SEMPRE" ${r.transferWindow === 'SEMPRE' ? 'selected' : ''}>Aberta o ano todo</option></select></div>
+        <div class="field" id="cfWinRF" ${r.transferWindow === 'JANELAS' ? '' : 'hidden'}><label for="cfWinR">Rodadas abertas no início de cada turno</label><input id="cfWinR" type="number" min="1" max="${x.clubsPerDivision - 1}" value="${r.windowRounds}"></div>
+        <label class="chk"><input type="checkbox" id="cfBlock" ${r.blockSpendingWhenNegative ? 'checked' : ''}> Caixa negativo não compra (fair play)</label>
+      </fieldset>
+      <fieldset><legend>Divisões</legend>
+        ${multi ? `<div class="field"><label for="cfProm">Sobem e descem por divisão</label><input id="cfProm" type="number" min="1" max="${Math.floor(x.clubsPerDivision / 4)}" value="${x.promotion}">
+          <p class="hint">Vale no fim desta temporada. Máximo ${Math.floor(x.clubsPerDivision / 4)} (1/4 dos clubes).</p></div>` : ''}
+        <div class="locked"><span><span class="muted">Divisões</span><strong>${x.divisions}</strong></span><span><span class="muted">Clubes por divisão</span><strong>${x.clubsPerDivision}</strong></span>
+          <span><span class="muted">Técnicos começam</span><strong>${esc(START_LABEL[x.humanStart] ?? x.humanStart)}</strong></span></div>
+        <p class="hint">Número de divisões e de clubes não muda depois que a sala foi criada: o mundo já foi gerado.</p>
+      </fieldset>
+    </div>
+    <div id="cfMsg"></div>
+    <div class="admin-bar"><button class="btn primary" type="submit" id="cfSave" ${s.aoVivo ? 'disabled' : ''}>Salvar configurações</button><button class="btn" type="button" id="cfReset">Desfazer alterações</button><span class="small muted" id="cfDirty"></span></div>`;
+  syncAdmin();
+}
+/** Mostra/esconde campos conforme o que está marcado (solo, privada, sem limite, janela). */
+function syncAdmin() {
+  const solo = Number($('#cfMax').value) === 1;
+  const noLimit = solo || $('#cfNoLimit').checked;
+  $('#cfSoloHint').hidden = !solo;
+  $('#cfPrivL').hidden = solo;
+  $('#cfPwF').hidden = solo || !$('#cfPriv').checked;
+  $('#cfNoLimitL').hidden = solo;
+  $('#cfTimeF').hidden = noLimit; $('#cfAfkF').hidden = noLimit;
+  $('#cfWinRF').hidden = $('#cfWin').value !== 'JANELAS';
+}
+function adminBody() {
+  const v = (id) => $('#' + id)?.value, c = (id) => !!$('#' + id)?.checked, n = (id) => Number(v(id));
+  const noLimit = c('cfNoLimit') || n('cfMax') === 1;
+  return {
+    settings: {
+      name: v('cfName'), maxHumans: n('cfMax'), isPrivate: c('cfPriv'), matchSpeed: v('cfSpeed'), difficulty: v('cfDiff'),
+      pacing: { prepTimeoutMinutes: noLimit ? null : n('cfTime'), minPrepSeconds: n('cfMin'), afkAfterMisses: noLimit ? 0 : n('cfAfk') },
+      rules: { maxSubs: n('cfSubs'), squadMin: n('cfSqMin'), squadMax: n('cfSqMax'), transferWindow: v('cfWin'), windowRounds: n('cfWinR'),
+        blockSpendingWhenNegative: c('cfBlock'), injuries: c('cfInj'), youthIntakePerSeason: c('cfYouth') },
+      ...($('#cfProm') ? { structure: { promotion: n('cfProm') } } : {}),
+    },
+    senha: c('cfPriv') && v('cfPw') ? v('cfPw') : undefined,
+  };
+}
+$('#adminCard').addEventListener('input', (e) => {
+  adminDirty = true; $('#cfDirty').textContent = 'Alterações não salvas';
+  syncAdmin();
+});
+$('#adminCard').addEventListener('click', (e) => { if (e.target.id === 'cfReset') { adminDirty = false; renderAdmin(); } });
+$('#adminCard').onsubmit = async (e) => {
+  e.preventDefault();
+  const btn = $('#cfSave'); btn.disabled = true;
+  try {
+    const r = await api(`/salas/${roomId}/configuracoes`, { method: 'PUT', body: adminBody() });
+    adminDirty = false;
+    Som.play('conquista');
+    toast(r.mudancas.length ? `Salvo: ${r.mudancas.join(', ')}.` : 'Nada mudou.');
+    await load();
+    renderAdmin();
+    $('#cfMsg').innerHTML = r.mudancas.length ? `<div class="msg ok">Configurações salvas: ${esc(r.mudancas.join(', '))}.</div>` : '';
+  } catch (err) {
+    $('#cfMsg').innerHTML = `<div class="msg err">${esc(err.message)}</div>`;
+    Som.play('recusa');
+  } finally { if ($('#cfSave')) $('#cfSave').disabled = !!S.aoVivo; }
+};
+
 function renderRoom() {
   const s = S, st = s.sala.settings;
+  renderAdmin();
   $('#inviteCard').innerHTML = s.sala.solo
     ? `<h3>Modo solo</h3><p style="margin:0">Você contra a IA. A rodada só roda quando você clica em <strong>Pronto</strong>.</p>`
     : `<h3>Convide os amigos</h3><div class="code-big">${esc(s.sala.codigo)}</div>
@@ -2140,8 +2260,14 @@ function renderRoom() {
     ['Divisões', `${st.structure.divisions} × ${st.structure.clubsPerDivision} clubes`],
     ...(st.structure.divisions > 1 ? [['Sobem / descem', st.structure.promotion]] : []),
     ['Substituições', st.rules.maxSubs], ['Lesões', st.rules.injuries ? 'Sim' : 'Não'],
+    ['Elenco', `${st.rules.squadMin} a ${st.rules.squadMax} jogadores`],
+    ['Janela de transferências', st.rules.transferWindow === 'SEMPRE' ? 'Aberta o ano todo' : `${st.rules.windowRounds} rodadas por turno`],
+    ['Caixa negativo compra?', st.rules.blockSpendingWhenNegative ? 'Não' : 'Sim'],
+    ['Peneira da base', st.rules.youthIntakePerSeason ? 'Sim' : 'Não'],
+    ['Vagas', st.maxHumans === 1 ? 'Solo' : `${s.membros.length} de ${st.maxHumans}`],
     ['Tempo limite', p.prepTimeoutMinutes ? `${p.prepTimeoutMinutes} min` : 'Sem limite'],
     ['Espera mínima', `${p.minPrepSeconds} s`],
+    ['Ausência (AFK)', p.afkAfterMisses ? `após ${p.afkAfterMisses} prazos` : 'Nunca'],
   ].map(([k, v]) => `<li><span>${k}</span><strong>${esc(v)}</strong></li>`).join('');
   $('#champions').innerHTML = s.historico.length ? s.historico.map((h) => `<li><span>Temporada ${h.season}</span><strong>🏆 ${esc(h.champion)}</strong></li>`).join('') : '<li class="muted">Nenhuma temporada completa ainda.</li>';
 }
