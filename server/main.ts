@@ -298,6 +298,10 @@ function liveView(room: Room, myClubId: number | null) {
     const sim = sims[mineIdx], v = sim.teamView(myClubId)!, f = fixtures[mineIdx];
     meuJogo = {
       indice: mineIdx, relogio: sim.clock(), fim: sim.finished, intervalo: sim.isHalftime,
+      // torcida do mandante no dia: mosaico (com o desenho) ou vaia
+      mosaico: room.crowdRound?.round === room.live.round ? room.crowdRound.mosaics[f.homeId] ?? null : null,
+      vaia: room.crowdRound?.round === room.live.round ? room.crowdRound.boos.includes(f.homeId) : false,
+      souMandante: f.homeId === myClubId,
       mandante: clubRef(room, f.homeId), visitante: clubRef(room, f.awayId), gm: sim.score.home, gv: sim.score.away,
       mentalidade: v.mentality, auxiliar: v.autoSubs, substituicoes: v.subsUsed, maxSubstituicoes: v.maxSubs, capitao: v.captainId,
       emCampo: v.onPitch.map((x) => {

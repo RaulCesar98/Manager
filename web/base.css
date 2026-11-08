@@ -49,6 +49,14 @@ h3 { font-size: 18px; font-weight: 700; }
   padding: 6px 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
 .theme button svg { width: 15px; height: 15px; }
 .theme button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+/* som */
+.sound { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px 3px 3px; background: var(--surface); }
+.sound-btn { font: 600 13px var(--f-body); color: var(--muted); background: none; border: 0; border-radius: 999px; padding: 6px 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.sound-btn[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.sound-btn svg { width: 15px; height: 15px; }
+.sound input[type=range] { width: 80px; accent-color: var(--pitch); }
+.sound input[type=range]:disabled { opacity: .4; }
+@media (max-width: 700px) { .sound-btn span { display: none; } .sound input[type=range] { width: 60px; } }
 @media (max-width: 700px) { .theme button span { display: none; } }
 
 /* cartões */

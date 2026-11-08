@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="base.css">
 <script src="comum.js"></script>
+<script src="sons.js"></script>
 <style>
 .next .vs { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: center; }
 .next .club { font: 800 24px/1.05 var(--f-display); text-transform: uppercase; text-wrap: balance; }
@@ -321,7 +322,7 @@ button.board:hover { box-shadow: 0 0 0 2px var(--card); }
       <h1 id="title">Carregando…</h1>
       <p class="sub" id="subtitle"></p>
     </div>
-    <div class="who"><div id="theme"></div></div>
+    <div class="who"><div id="sound"></div><div id="theme"></div></div>
   </header>
 
   <div id="errorBox" class="msg err" hidden></div>
@@ -540,6 +541,7 @@ button.board:hover { box-shadow: 0 0 0 2px var(--card); }
 <div class="modal" id="live" hidden role="dialog" aria-modal="true" aria-labelledby="liveTitle">
   <div class="card live">
     <div class="live-head"><h3 id="liveTitle">Rodada</h3><span class="live-clock" id="liveClock"></span></div>
+    <div id="liveCrowd"></div>
     <div class="boards" id="boards"></div>
     <div class="sub-panel" id="subPanel" hidden></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -621,6 +623,7 @@ button.board:hover { box-shadow: 0 0 0 2px var(--card); }
 
 <script>
 mountTheme($('#theme'));
+Som.mount($('#sound'));
 const roomId = new URLSearchParams(location.search).get('sala');
 let S = null;            // estado da sala
 let skew = 0;            // relógio do servidor - relógio daqui
@@ -687,6 +690,7 @@ function setState(s, first = false) {
   $('#pickView').hidden = true; $('#gameView').hidden = false;
   renderHome();
   setBadge(s.mensagensNaoLidas);
+  soundsForState(prev, s, first);
   if (tab === 'sala') renderRoom();
   $('#liveLock').hidden = !s.aoVivo;
 
@@ -973,7 +977,7 @@ function fmtLeft(ms) {
 async function toggleReady() {
   if (dirty && !S.eu.pronto && !confirm('Há alterações na escalação que não foram salvas. Jogar com a escalação salva anteriormente?')) return;
   $('#readyBtn').disabled = true;
-  try { setState(await api(`/salas/${roomId}/pronto`, { method: 'POST', body: { pronto: !S.eu.pronto } })); }
+  try { const was = S.eu.pronto; setState(await api(`/salas/${roomId}/pronto`, { method: 'POST', body: { pronto: !S.eu.pronto } })); if (!was) Som.play('pronto'); }
   catch (e) { toast(e.message); }
   if ($('#readyBtn')) $('#readyBtn').disabled = false;
 }
@@ -984,7 +988,8 @@ async function toggleReady() {
 const live = { open: false, round: null, timer: null, data: null, hidden: null, subOpen: false, outSel: null, inSel: null, prevScores: {} };
 
 function openLive() {
-  live.open = true; live.round = S.aoVivo.rodada; live.subOpen = false; live.outSel = live.inSel = null; live.prevScores = {};
+  live.open = true; live.round = S.aoVivo.rodada; live.subOpen = false; live.outSel = live.inSel = null; live.prevScores = {}; live.snd = null;
+  $('#liveCrowd').innerHTML = '';
   $('#live').hidden = false; $('#liveClose').hidden = true; $('#liveHide').hidden = false; $('#subPanel').hidden = true;
   $('#liveTitle').textContent = `Rodada ${live.round}`;
   $('#boards').innerHTML = '<p class="muted">Carregando…</p>';
@@ -997,6 +1002,7 @@ async function pollLive() {
   try { d = await api(`/salas/${roomId}/ao-vivo`); } catch (e) { toast(e.message); live.timer = setTimeout(pollLive, 2000); return; }
   if (!d.aoVivo) { setSeen(`${d.temporada}-${d.rodada}`); showFinal(d.rodada, true); return; }
   live.data = d;
+  liveSounds(d);
   renderBoards(d.jogos, d.meuJogo?.relogio ?? '');
   if (live.subOpen) renderSubPanel();
   live.timer = setTimeout(pollLive, Math.max(400, Math.min(1000, d.msPorMinuto)));
@@ -1069,6 +1075,67 @@ async function liveAct(body, okMsg) {
   catch (e) { toast(e.message); return false; }
 }
 
+// ============================================================ sons
+/** Sons da rodada ao vivo: apitos, gols, cartões, lesões, torcida no dia. */
+function liveSounds(d) {
+  const m = d.meuJogo;
+  const prev = live.snd;
+  // gols em outros jogos: só os da sua divisão, e no máximo um "plim" a cada 6 s
+  const myTier = d.jogos.find((j) => j.meu)?.divisao;
+  const others = Object.fromEntries(d.jogos.filter((j) => !j.meu && j.divisao === myTier).map((j) => [j.mandante.id, j.gm + j.gv]));
+  const now = m ? {
+    gm: m.gm, gv: m.gv, intervalo: m.intervalo, fim: m.fim,
+    amarelos: m.emCampo.reduce((s, x) => s + x.amarelos, 0),
+    expulsos: m.sairam.filter((x) => x.motivo === 'EXPULSO').length, lesionados: m.sairam.filter((x) => x.motivo === 'LESIONADO').length,
+  } : null;
+  live.snd = { now, others };
+  if (!prev) {
+    // abriu a rodada: apito inicial e a torcida do mandante
+    if (m) renderLiveCrowd(m);
+    if (d.minutosJogados <= 3) {
+      Som.play('apito');
+      if (m?.mosaico) Som.play('canto', { delay: 0.9 });
+      else if (m?.vaia) Som.play('vaia', { delay: 0.9 });
+    }
+    return;
+  }
+  if (now && prev.now) {
+    const meHome = m.souMandante;
+    const myGoals = meHome ? now.gm : now.gv, theirGoals = meHome ? now.gv : now.gm;
+    const pMy = meHome ? prev.now.gm : prev.now.gv, pTheir = meHome ? prev.now.gv : prev.now.gm;
+    if (myGoals > pMy) Som.play('gol', { gap: 1 });
+    else if (theirGoals > pTheir) Som.play('golSofrido', { gap: 1 });
+    else if (now.expulsos > prev.now.expulsos) Som.play('vermelho');
+    else if (now.lesionados > prev.now.lesionados) Som.play('lesao');
+    else if (now.amarelos > prev.now.amarelos) Som.play('amarelo');
+    if (now.intervalo && !prev.now.intervalo) Som.play('intervalo', { delay: 0.3 });
+    if (now.fim && !prev.now.fim) Som.play('fim', { delay: 0.3 });
+  }
+  if (Object.entries(others).some(([k, v]) => prev.others[k] !== undefined && v > prev.others[k]) && !(now && prev.now && (now.gm + now.gv) > (prev.now.gm + prev.now.gv))) Som.play('golOutro', { gap: 6 });
+}
+function renderLiveCrowd(m) {
+  const el = $('#liveCrowd');
+  if (m.mosaico) el.innerHTML = mosaicFigure(m.mosaico, `${m.souMandante ? 'Sua torcida fez' : `A torcida do ${esc(m.mandante.nome)} fez`} um mosaico: o time da casa joga com +3% de força.`);
+  else if (m.vaia) el.innerHTML = `<div class="msg ${m.souMandante ? 'err' : 'info'}">${m.souMandante ? 'Sua torcida está vaiando o time: jogar em casa vira peso (−3% de força).' : `A torcida do ${esc(m.mandante.nome)} vaia o próprio time (−3% de força para eles).`}</div>`;
+  else el.innerHTML = '';
+}
+/** Sons fora da partida: mensagens novas e o que a torcida fez. */
+function soundsForState(prev, s, first) {
+  if (first || !prev) { lastCrowdKey = crowdKey(s); return; }
+  const key = crowdKey(s);
+  if (key && key !== lastCrowdKey) {
+    const e = s.painel.torcida.eventos[0];
+    // com transmissão ao vivo, mosaico e vaia já tocam no apito inicial; na rodada instantânea tocam aqui
+    const instant = s.sala.settings.matchSpeed === 'INSTANTANEA';
+    const name = { MOSAICO: instant ? 'canto' : null, APOIO: 'canto', VAIA: instant ? 'vaia' : null, AGRESSAO: 'vaia', INVASAO: 'sirene', MOSAICO_RIVAL: null }[e.tipo];
+    if (name) Som.play(name, { delay: 2.2 });
+    lastCrowdKey = key;
+  }
+  if (s.mensagensNaoLidas > prev.mensagensNaoLidas && !key?.includes('INVASAO')) Som.play('mensagem', { delay: 0.6, gap: 2 });
+}
+let lastCrowdKey = null;
+const crowdKey = (s) => { const e = s.painel?.torcida?.eventos?.[0]; return e ? `${e.temporada}-${e.rodada}-${e.tipo}-${e.titulo}` : null; };
+
 /** Placares finais de uma rodada (fim do ao vivo, ou rodada instantânea). */
 async function showFinal(round, fromLive = false) {
   clearTimeout(live.timer);
@@ -1076,11 +1143,16 @@ async function showFinal(round, fromLive = false) {
   try { r = await api(`/salas/${roomId}/rodada/${round}`); } catch (e) { toast(e.message); return; }
   setSeen(`${r.temporada}-${round}`);
   live.open = true; live.round = round; live.subOpen = false;
+  if (!fromLive) $('#liveCrowd').innerHTML = '';
   $('#live').hidden = false; $('#subPanel').hidden = true; $('#liveHide').hidden = true;
   $('#liveTitle').textContent = `Rodada ${round} · resultados`;
   renderBoards(r.jogos.map((j) => ({ ...j, fim: true })), 'Fim', true);
   const g = r.meuJogo;
   if (g) {
+    const mine = g.mandante.id === S.eu.clubeId, gf = mine ? g.gm : g.gv, ga = mine ? g.gv : g.gm;
+    // apito final: na rodada instantânea, ou se a transmissão acabou antes de mostrar o fim do seu jogo
+    if (!fromLive || (live.snd?.now && !live.snd.now.fim)) Som.play('fim');
+    if (gf > ga) Som.play('aplausos', { delay: fromLive ? 0.4 : 1.3 });
     const best = g.notas.filter((n) => n.clubId === S.eu.clubeId).slice(0, 3);
     $('#boards').insertAdjacentHTML('afterbegin', `<div class="card" style="padding:12px">
       <div class="scoreline compact"><div class="team">${esc(g.mandante.nome)}</div><div class="score">${g.gm} × ${g.gv}</div><div class="team away">${esc(g.visitante.nome)}</div></div>
@@ -1490,7 +1562,7 @@ $('#expSector').onchange = fillExpansion;
 $('#expAmount').onchange = fillExpansion;
 async function startWork(body, label) {
   if (!confirm(`Confirmar: ${label}?`)) return;
-  try { await renderStadium(await api(`/salas/${roomId}/obras`, { method: 'POST', body })); toast('Obra iniciada.'); load(); }
+  try { await renderStadium(await api(`/salas/${roomId}/obras`, { method: 'POST', body })); Som.play('obra'); toast('Obra iniciada.'); load(); }
   catch (e) { toast(e.message); }
 }
 $('#expGo').onclick = () => startWork({ tipo: 'AMPLIAR', instalacao: 'ESTADIO', setor: $('#expSector').value, quantidade: Number($('#expAmount').value) },
@@ -1673,7 +1745,7 @@ $('#youthTable').addEventListener('click', async (e) => {
   if (b) {
     const j = youth.jovens.find((x) => x.id === Number(b.dataset.id));
     if (b.dataset.yact === 'dispensar' && !confirm(`Dispensar ${j.nome}? Ele fica livre no mercado.`)) return;
-    try { await renderYouth(await api(`/salas/${roomId}/base/${j.id}/${b.dataset.yact}`, { method: 'POST' })); toast(b.dataset.yact === 'promover' ? `${j.nome} subiu para o profissional.` : `${j.nome} foi dispensado.`); squad = null; load(); }
+    try { await renderYouth(await api(`/salas/${roomId}/base/${j.id}/${b.dataset.yact}`, { method: 'POST' })); toast(b.dataset.yact === 'promover' ? `${j.nome} subiu para o profissional.` : `${j.nome} foi dispensado.`); if (b.dataset.yact === 'promover') Som.play('conquista'); squad = null; load(); }
     catch (err) { toast(err.message); }
     return;
   }
@@ -1838,7 +1910,7 @@ $('#msgList').addEventListener('click', async (e) => {
   const of = e.target.closest('[data-offer]');
   if (of) {
     try { await api(`/salas/${roomId}/ofertas/${encodeURIComponent(of.dataset.offer)}`, { method: 'POST', body: { aceitar: of.dataset.yes === '1' } });
-      toast(of.dataset.yes === '1' ? 'Proposta aceita. O comprador agora negocia o salário com o jogador.' : 'Proposta recusada.'); }
+      Som.play(of.dataset.yes === '1' ? 'dinheiro' : 'clique'); toast(of.dataset.yes === '1' ? 'Proposta aceita. O comprador agora negocia o salário com o jogador.' : 'Proposta recusada.'); }
     catch (err) { toast(err.message); }
     return;
   }
@@ -1903,6 +1975,7 @@ const dots = (n, max) => Array.from({ length: max }, (_, i) => `<span class="${i
 async function negAct(body) {
   try {
     showNegotiation(await api(`/salas/${roomId}/negociacoes/${encodeURIComponent(neg.id)}`, { method: 'POST', body }));
+    if (neg.status === 'ACEITA') Som.play('dinheiro'); else if (neg.status !== 'ABERTA') Som.play('recusa');
     if (neg.status !== 'ABERTA') { squad = null; load(); if (tab === 'mensagens') renderMessages(); if (tab === 'financas') renderFinance(); if (tab === 'mercado') searchMarket(); }
   } catch (e) { toast(e.message); }
 }
@@ -1938,7 +2011,7 @@ $('#loansBody').addEventListener('click', async (e) => {
 });
 async function answerLoanUI(id, acao) {
   if (acao === 'ACEITAR' && !confirm('Aceitar o empréstimo nessas condições?')) return;
-  try { const r = await api(`/salas/${roomId}/emprestimos/${encodeURIComponent(id)}`, { method: 'POST', body: { acao } }); toast(r.texto); afterLoanChange(); }
+  try { const r = await api(`/salas/${roomId}/emprestimos/${encodeURIComponent(id)}`, { method: 'POST', body: { acao } }); Som.play(r.status === 'ACEITA' ? 'dinheiro' : 'clique'); toast(r.texto); afterLoanChange(); }
   catch (err) { toast(err.message); }
 }
 async function counterLoan(id) {
@@ -1951,7 +2024,7 @@ async function counterLoan(id) {
 }
 async function buyLoan(id) {
   if (!confirm('Exercer a opção de compra? O valor é pago agora e o jogador fica em definitivo.')) return;
-  try { await api(`/salas/${roomId}/emprestimos/${encodeURIComponent(id)}/comprar`, { method: 'POST' }); toast('Compra concluída.'); afterLoanChange(); }
+  try { await api(`/salas/${roomId}/emprestimos/${encodeURIComponent(id)}/comprar`, { method: 'POST' }); Som.play('dinheiro'); toast('Compra concluída.'); afterLoanChange(); }
   catch (err) { toast(err.message); }
 }
 function afterLoanChange() { squad = null; load(); if (tab === 'mercado') renderLoans(); if (tab === 'mensagens') renderMessages(); if (tab === 'escalacao') loadSquad(); }
@@ -2024,6 +2097,7 @@ $('#loanForm').onsubmit = async (e) => {
     const r = c.mode === 'PEDIR'
       ? await api(`/salas/${roomId}/jogadores/${c.playerId}/emprestimo`, { method: 'POST', body })
       : await api(`/salas/${roomId}/emprestimos/${encodeURIComponent(c.propId)}`, { method: 'POST', body: { acao: 'CONTRA', condicoes: body } });
+    Som.play(r.status === 'ACEITA' ? 'dinheiro' : r.status === 'RECUSADA' ? 'recusa' : 'mensagem');
     if (r.status === 'ACEITA' || (r.status === 'PENDENTE' && c.mode === 'PEDIR')) { $('#loanModal').hidden = true; toast(r.texto); afterLoanChange(); return; }
     $('#loanResult').innerHTML = `<div class="msg ${r.status === 'RECUSADA' ? 'err' : 'info'}">${esc(r.texto)}</div>`;
     if (r.status === 'RECUSADA' && c.mode === 'CONTRA') { $('#loanSubmit').disabled = true; setTimeout(() => { $('#loanSubmit').disabled = false; $('#loanModal').hidden = true; afterLoanChange(); }, 2500); }

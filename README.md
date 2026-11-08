@@ -67,6 +67,15 @@ com as cores do clube (sigla, escudo, listras, estrelas ou diagonal), cartão po
 aparece na mensagem e no quadro "Torcida" do Início, com as chances da próxima rodada.
 Agressões e invasões só acontecem com clubes de técnicos.
 
+**Efeitos sonoros (`web/sons.js`):** gerados na hora com Web Audio, sem arquivos de áudio.
+Na partida ao vivo: apito inicial, de intervalo e final; explosão da torcida e corneta nos gols
+do seu time, lamento nos gols sofridos, "plim" discreto nos gols de outros jogos da divisão,
+apito no amarelo, som de expulsão e de lesão. Mosaico no seu estádio toca batucada com palmas
+(e aparece na tela da partida); vaia toca "uuuu". Fora do jogo: caixa registradora em negócio
+fechado, som de recusa, marteladas ao iniciar obra, fanfarra ao promover jovem, sirene em
+invasão ao CT e aviso de mensagem nova. O botão "Som" no topo liga/desliga e tem volume
+(fica salvo no navegador). O navegador só libera o som depois do primeiro clique na página.
+
 **Ranking de torcidas** (aba Tabela): todos os clubes ordenados pelo número de torcedores, com
 crescimento na temporada, humor, sócios, público médio (e ocupação), mosaicos da temporada e
 reputação. Filtra por divisão, ordena por qualquer coluna e mostra a sua posição no geral, na
@@ -107,6 +116,7 @@ server/office.ts         caixa de mensagens, negociações (renovação, patroc�
 server/market.ts         mercado: busca, ficha, compra, venda, propostas entre técnicos, janela
 server/loans.ts          empréstimos: divisão de salário, taxa, compra pré-fixada por meta
 server/crowd.ts          torcida pelo humor: vaias, agressões, invasão ao CT, apoio, mosaicos
+web/sons.js              efeitos sonoros (Web Audio, sem arquivos de áudio)
 server/club.ts           estádio (ingressos, obras), instalações, divisão de base, evolução semanal
 server/store.ts          salvamento em arquivos JSON (troque por PostgreSQL para hospedar)
 web/index.html           login, cadastro e minhas salas
