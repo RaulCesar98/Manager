@@ -1,0 +1,475 @@
+<!doctype html>
+<html lang="pt-BR">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Criar Sala</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800&family=Archivo:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<script>
+try { const t = localStorage.getItem('tema'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}
+</script>
+<style>
+/* Layout: prancheta tática — formulário em blocos numerados por área, súmula ao lado (embaixo no celular) */
+:root {
+  --bg: #eef1ea;          /* papel da prancheta */
+  --surface: #f9faf6;
+  --ink: #15261c;         /* verde quase preto */
+  --muted: #5b6b60;
+  --line: #c9d3c8;
+  --pitch: #1f5b3a;       /* gramado */
+  --pitch-soft: #dbe8dd;
+  --card: #f2c230;        /* cartão amarelo */
+  --card-ink: #2a2100;
+  --bad: #b3261e;
+  --bad-soft: #f8e0dd;
+  --good: #1f7a45;
+  --f-display: "Big Shoulders Display", "Arial Narrow", Impact, sans-serif;
+  --f-body: "Archivo", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --r: 6px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1611; --surface: #142019; --ink: #e8efe6; --muted: #9aab9f; --line: #2a3a30;
+    --pitch: #5fbf86; --pitch-soft: #1b3325; --card: #f2c230; --card-ink: #2a2100;
+    --bad: #ff8a80; --bad-soft: #3a1714; --good: #6fd39a; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1611; --surface: #142019; --ink: #e8efe6; --muted: #9aab9f; --line: #2a3a30;
+  --pitch: #5fbf86; --pitch-soft: #1b3325; --card: #f2c230; --card-ink: #2a2100;
+  --bad: #ff8a80; --bad-soft: #3a1714; --good: #6fd39a; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  background: var(--bg); color: var(--ink); font: 15px/1.5 var(--f-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 48px;
+}
+.wrap { max-width: 1080px; margin: 0 auto; display: grid; gap: 24px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 900px) { .wrap { grid-template-columns: minmax(0, 1fr) 340px; align-items: start; } }
+
+header.top { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; border-bottom: 3px solid var(--ink); padding-bottom: 12px; }
+h1 { font: 800 clamp(34px, 7vw, 56px)/0.9 var(--f-display); text-transform: uppercase; letter-spacing: 0.01em; margin: 0; text-wrap: balance; }
+.top p { margin: 0; color: var(--muted); max-width: 46ch; }
+.back { display: inline-block; font: 600 13px var(--f-body); color: var(--muted); text-decoration: none; margin-bottom: 6px; }
+.back:hover { color: var(--pitch); }
+.toast a { color: inherit; }
+
+form { display: grid; gap: 16px; min-width: 0; }
+fieldset { border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); margin: 0; padding: 16px; display: grid; gap: 14px; min-width: 0; }
+legend { font: 700 22px/1 var(--f-display); text-transform: uppercase; letter-spacing: 0.03em; padding: 0 6px; display: flex; gap: 8px; align-items: center; }
+legend .no { background: var(--ink); color: var(--bg); font-size: 15px; width: 24px; height: 24px; display: inline-grid; place-items: center; border-radius: 3px; }
+.row { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+.field { display: grid; gap: 6px; min-width: 0; align-content: start; }
+label, .lbl { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.hint { font-size: 13px; color: var(--muted); margin: 0; }
+input[type=text], input[type=number], input[type=password], select {
+  font: 500 15px var(--f-body); color: var(--ink); background: var(--bg); border: 1px solid var(--line);
+  border-radius: var(--r); padding: 9px 10px; width: 100%; min-width: 0;
+}
+input:focus-visible, select:focus-visible, button:focus-visible, .seg label:focus-within { outline: 2px solid var(--pitch); outline-offset: 2px; }
+.inline { display: flex; gap: 8px; align-items: center; }
+.inline input[type=number] { max-width: 110px; }
+
+/* botões segmentados (rádio) */
+.seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label { cursor: pointer; text-transform: none; letter-spacing: 0; font: 600 14px var(--f-body); color: var(--ink);
+  border: 1px solid var(--line); background: var(--bg); padding: 8px 12px; border-radius: var(--r); display: grid; gap: 2px; }
+.seg label small { font-weight: 400; color: var(--muted); font-size: 12px; }
+.seg input:checked + span { color: var(--pitch); }
+.seg label:has(input:checked) { border-color: var(--pitch); background: var(--pitch-soft); box-shadow: inset 0 0 0 1px var(--pitch); }
+
+/* interruptor */
+.switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; border-top: 1px dashed var(--line); }
+.switch:first-of-type { border-top: 0; }
+.switch .txt { display: grid; gap: 2px; text-transform: none; letter-spacing: 0; font: 500 15px var(--f-body); color: var(--ink); }
+.switch .txt small { color: var(--muted); font-size: 13px; font-weight: 400; }
+.switch input { appearance: none; width: 44px; height: 26px; border-radius: 13px; background: var(--line); position: relative; flex: none; cursor: pointer; transition: background .15s; }
+.switch input::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--surface); transition: transform .15s; }
+.switch input:checked { background: var(--pitch); }
+.switch input:checked::after { transform: translateX(18px); }
+
+/* atalhos de ritmo */
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips button { font: 500 13px var(--f-body); color: var(--ink); background: transparent; border: 1px dashed var(--muted); border-radius: 999px; padding: 6px 12px; cursor: pointer; }
+.chips button:hover { border-style: solid; border-color: var(--pitch); color: var(--pitch); }
+
+/* dificuldade: tabela de modificadores */
+.diff-table { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
+th, td { padding: 6px 8px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+thead th { font-weight: 600; color: var(--muted); text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; }
+td.on, th.on { background: var(--pitch-soft); color: var(--pitch); font-weight: 600; }
+.up { color: var(--good); } .down { color: var(--bad); }
+
+/* súmula */
+aside { display: grid; gap: 16px; min-width: 0; }
+@media (min-width: 900px) { aside { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px); } }
+.sumula { background: var(--ink); color: var(--bg); border-radius: var(--r); padding: 16px; display: grid; gap: 12px; }
+.sumula h2 { margin: 0; font: 800 26px/1 var(--f-display); text-transform: uppercase; letter-spacing: 0.02em; }
+.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; margin: 0; }
+.stats div { display: grid; gap: 0; }
+.stats dt { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; opacity: .7; }
+.stats dd { margin: 0; font: 700 24px/1.1 var(--f-display); font-variant-numeric: tabular-nums; }
+.status { border-radius: var(--r); padding: 10px 12px; font-size: 14px; display: grid; gap: 6px; }
+.status.ok { background: var(--pitch); color: var(--bg); }
+.status.err { background: var(--card); color: var(--card-ink); }
+.status ul { margin: 0; padding-left: 18px; }
+.btn-main { font: 800 20px var(--f-display); text-transform: uppercase; letter-spacing: 0.04em; background: var(--card); color: var(--card-ink); border: 0; border-radius: var(--r); padding: 12px; cursor: pointer; }
+.btn-main:disabled { opacity: .45; cursor: not-allowed; }
+.json { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); display: grid; }
+.json .bar { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+.json button { font: 600 12px var(--f-body); background: transparent; color: var(--pitch); border: 1px solid var(--pitch); border-radius: 4px; padding: 4px 10px; cursor: pointer; }
+pre { margin: 0; padding: 10px; font: 12px/1.45 var(--f-mono); overflow: auto; max-height: 300px; color: var(--ink); }
+.toast { font-size: 14px; color: var(--good); min-height: 1.4em; margin: 0; }
+/* o card da súmula inverte as cores do tema: o texto herda a cor do card */
+.sumula .toast { color: inherit; font-weight: 600; }
+/* seletor de tema */
+.top-side { display: grid; gap: 10px; justify-items: end; }
+.theme { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 3px; background: var(--surface); }
+.theme button { font: 600 13px var(--f-body); color: var(--muted); background: none; border: 0; border-radius: 999px;
+  padding: 6px 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.theme button svg { width: 15px; height: 15px; }
+.theme button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.theme button:focus-visible { outline: 2px solid var(--pitch); outline-offset: 2px; }
+@media (max-width: 600px) { .top-side { justify-items: start; } .theme button span { display: none; } .theme button { padding: 8px 10px; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div><a class="back" href="index.html">← Minhas salas</a><h1>Criar sala</h1></div>
+    <div class="top-side">
+      <div class="theme" role="group" aria-label="Tema">
+        <button type="button" data-t="auto" title="Seguir o sistema"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg><span>Automático</span></button>
+        <button type="button" data-t="light" title="Modo claro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg><span>Claro</span></button>
+        <button type="button" data-t="dark" title="Modo escuro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><span>Escuro</span></button>
+      </div>
+      <p>Defina as regras da liga antes de convidar os amigos. Estrutura, regras e dificuldade valem a temporada inteira; preparação e velocidade podem mudar depois.</p>
+    </div>
+  </header>
+
+  <form id="room" novalidate>
+    <fieldset>
+      <legend><span class="no">1</span> Sala</legend>
+      <div class="row">
+        <div class="field"><label for="name">Nome da sala</label><input id="name" type="text" maxlength="40" value="Liga dos Amigos"></div>
+        <div class="field"><label for="maxHumans">Técnicos humanos (máx.)</label><input id="maxHumans" type="number" min="1" max="40" value="12">
+          <p class="hint">1 = jogar sozinho contra a IA</p></div>
+      </div>
+      <label class="switch" for="isPrivate" id="privateRow"><span class="txt">Sala privada<small>Só entra quem tiver o código e a senha</small></span><input id="isPrivate" type="checkbox" checked></label>
+      <div class="field" id="pwdField"><label for="pwd">Senha da sala</label><input id="pwd" type="password" value="" placeholder="Opcional — só o código já basta"></div>
+    </fieldset>
+
+    <fieldset>
+      <legend><span class="no">2</span> Estrutura da liga</legend>
+      <div class="row">
+        <div class="field"><label for="divisions">Divisões</label>
+          <select id="divisions"><option value="1">1 (só Série A)</option><option value="2" selected>2 (A e B)</option><option value="3">3 (A, B e C)</option><option value="4">4 (A até D)</option></select></div>
+        <div class="field"><label for="clubs">Clubes por divisão</label>
+          <select id="clubs"></select></div>
+        <div class="field" id="promoField"><label for="promo">Sobem e descem</label>
+          <input id="promo" type="number" min="1" max="5" value="4"><p class="hint">Mesmo número nas duas direções</p></div>
+      </div>
+      <div class="field"><span class="lbl">Onde os humanos começam</span>
+        <div class="seg">
+          <label><input type="radio" name="humanStart" value="ULTIMA_DIVISAO" checked><span>Última divisão</span><small>Todos sobem do zero</small></label>
+          <label><input type="radio" name="humanStart" value="QUALQUER"><span>Escolhe o clube</span><small>Qualquer divisão</small></label>
+          <label><input type="radio" name="humanStart" value="SORTEIO"><span>Sorteio</span><small>Clube aleatório</small></label>
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend><span class="no">3</span> Regras</legend>
+      <div class="row">
+        <div class="field"><span class="lbl">Substituições por jogo</span>
+          <div class="seg">
+            <label><input type="radio" name="maxSubs" value="3"><span>3</span></label>
+            <label><input type="radio" name="maxSubs" value="5" checked><span>5</span></label>
+          </div></div>
+        <div class="field"><label for="squadMin">Elenco mínimo</label><input id="squadMin" type="number" min="16" max="40" value="18"></div>
+        <div class="field"><label for="squadMax">Elenco máximo</label><input id="squadMax" type="number" min="16" max="40" value="32"></div>
+      </div>
+      <div class="field"><span class="lbl">Transferências</span>
+        <div class="seg">
+          <label><input type="radio" name="window" value="SEMPRE"><span>Mercado sempre aberto</span></label>
+          <label><input type="radio" name="window" value="JANELAS" checked><span>Janelas no início de cada turno</span></label>
+        </div>
+        <div class="inline" id="windowRoundsRow"><input id="windowRounds" type="number" min="1" max="19" value="4"><span class="hint">rodadas de janela aberta</span></div>
+      </div>
+      <div>
+        <label class="switch" for="wageCapOn"><span class="txt">Teto salarial<small>Folha não pode passar de uma parte da receita</small></span><input id="wageCapOn" type="checkbox"></label>
+        <div class="inline" id="wageCapRow" hidden><input id="wageCap" type="number" min="30" max="100" value="70"><span class="hint">% da receita da temporada anterior</span></div>
+        <label class="switch" for="ffp"><span class="txt">Fair play financeiro<small>Clube com saldo negativo não pode contratar</small></span><input id="ffp" type="checkbox" checked></label>
+        <label class="switch" for="injuries"><span class="txt">Lesões<small>Jogadores se machucam em jogos e treinos</small></span><input id="injuries" type="checkbox" checked></label>
+        <label class="switch" for="youth"><span class="txt">Peneira da base<small>Novos garotos a cada temporada</small></span><input id="youth" type="checkbox" checked></label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend><span class="no">4</span> Preparação entre rodadas</legend>
+      <p class="hint" id="multiHint">A rodada começa quando todos os técnicos clicam em <strong>Pronto</strong>. O tempo limite evita que alguém ausente trave a sala.</p>
+      <p class="hint" id="soloHint" hidden><strong>Modo solo:</strong> a rodada só começa quando você clicar em <strong>Pronto</strong>. Não há tempo limite: o jogo espera você, mesmo que feche e volte outro dia.</p>
+      <div class="field" id="presetsField"><span class="lbl">Atalhos</span><div class="chips" id="presets"></div></div>
+      <label class="switch" for="limitOn" id="limitRow"><span class="txt">Tempo limite<small>Se acabar, a rodada roda com quem não confirmou usando a última escalação salva</small></span><input id="limitOn" type="checkbox" checked></label>
+      <div class="row">
+        <div class="field" id="limitField"><label for="prep">Tempo limite</label>
+          <div class="inline"><input id="prep" type="number" min="1" value="10"><select id="prepUnit" aria-label="Unidade do tempo limite"><option value="1" selected>minutos</option><option value="60">horas</option></select></div></div>
+        <div class="field"><label for="minPrep">Espera mínima (s)</label><input id="minPrep" type="number" min="0" max="600" value="20">
+          <p class="hint">Tempo para ver os resultados, mesmo com todos prontos</p></div>
+      </div>
+      <div class="field" id="afkField"><label for="afk">Parar de esperar quem some</label>
+        <select id="afk"><option value="0">Nunca</option><option value="2">Após 2 prazos perdidos seguidos</option><option value="3" selected>Após 3 prazos perdidos seguidos</option><option value="5">Após 5 prazos perdidos seguidos</option></select>
+        <p class="hint">O técnico ausente vira AFK; volta a ser esperado quando clicar em Pronto</p></div>
+    </fieldset>
+
+    <fieldset>
+      <legend><span class="no">5</span> Velocidade da partida ao vivo</legend>
+      <p class="hint">O resultado sai na hora; isto só muda o tempo da transmissão lance a lance.</p>
+      <div class="seg" id="speeds"></div>
+    </fieldset>
+
+    <fieldset>
+      <legend><span class="no">6</span> Dificuldade</legend>
+      <div class="seg" id="diffs"></div>
+      <div class="diff-table"><table id="diffTable"></table></div>
+    </fieldset>
+  </form>
+
+  <aside>
+    <div class="sumula">
+      <h2>Súmula da sala</h2>
+      <dl class="stats">
+        <div><dt>Clubes</dt><dd id="sClubs">40</dd></div>
+        <div><dt>Rodadas</dt><dd id="sRounds">38</dd></div>
+        <div><dt>Jogos na temporada</dt><dd id="sGames">760</dd></div>
+        <div><dt>Temporada leva</dt><dd id="sDuration">~</dd></div>
+      </dl>
+      <div class="status" id="status"></div>
+      <button class="btn-main" id="create" type="submit" form="room">Criar sala</button>
+      <p class="toast" id="toast" role="status"></p>
+    </div>
+    <div class="json">
+      <div class="bar"><span class="lbl">Configuração (RoomSettings)</span><button type="button" id="copy">Copiar</button></div>
+      <pre id="out"></pre>
+    </div>
+  </aside>
+</div>
+
+<script>
+// Espelha sim/settings.ts — mantenha os dois iguais.
+const DIFFICULTY = {
+  FACIL:    { startingBalance: 1.6,  aiStrength: 0.95, sponsorValue: 1.3,  fanGrowth: 1.3,  fanPatience: 0.7,  injuryRate: 0.7,  wageDemands: 0.85 },
+  NORMAL:   { startingBalance: 1.0,  aiStrength: 1.0,  sponsorValue: 1.0,  fanGrowth: 1.0,  fanPatience: 1.0,  injuryRate: 1.0,  wageDemands: 1.0 },
+  DIFICIL:  { startingBalance: 0.7,  aiStrength: 1.04, sponsorValue: 0.85, fanGrowth: 0.85, fanPatience: 1.25, injuryRate: 1.15, wageDemands: 1.15 },
+  LENDARIO: { startingBalance: 0.45, aiStrength: 1.08, sponsorValue: 0.7,  fanGrowth: 0.7,  fanPatience: 1.5,  injuryRate: 1.3,  wageDemands: 1.3 },
+};
+const DIFF_LABEL = { FACIL: 'Fácil', NORMAL: 'Normal', DIFICIL: 'Difícil', LENDARIO: 'Lendário' };
+// higherIsBetter: true = número maior ajuda o jogador
+const MODS = [
+  ['startingBalance', 'Caixa inicial', true], ['sponsorValue', 'Valor dos patrocínios', true],
+  ['fanGrowth', 'Ganho de torcedores', true], ['aiStrength', 'Força dos times da IA', false],
+  ['fanPatience', 'Cobrança da torcida', false], ['injuryRate', 'Lesões', false], ['wageDemands', 'Salários pedidos', false],
+];
+const MS_PER_MIN = { INSTANTANEA: 0, RAPIDA: 400, NORMAL: 1200, LENTA: 3000 };
+const SPEED_LABEL = { INSTANTANEA: 'Instantânea', RAPIDA: 'Rápida', NORMAL: 'Normal', LENTA: 'Lenta' };
+const PRESETS = [
+  ['Relâmpago (2 min)',       { limit: [2, 1],  minPrep: 10, afk: 2 }],
+  ['Sessão ao vivo (10 min)', { limit: [10, 1], minPrep: 20, afk: 3 }],
+  ['Com calma (30 min)',      { limit: [30, 1], minPrep: 30, afk: 3 }],
+  ['Liga longa (24 h)',       { limit: [24, 60], minPrep: 60, afk: 3 }],
+  ['Sem limite',              { limit: null,    minPrep: 20, afk: 0 }],
+];
+
+const $ = (id) => document.getElementById(id);
+
+// --- tema: automático (segue o sistema), claro ou escuro; a escolha fica salva neste navegador
+function applyTheme(t) {
+  const root = document.documentElement;
+  if (t === 'light' || t === 'dark') root.dataset.theme = t; else delete root.dataset.theme;
+  try { t === 'auto' ? localStorage.removeItem('tema') : localStorage.setItem('tema', t); } catch (e) {}
+  document.querySelectorAll('.theme button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.t === t)));
+}
+document.querySelector('.theme').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (b) applyTheme(b.dataset.t);
+});
+applyTheme(document.documentElement.dataset.theme || 'auto');
+const radio = (name) => document.querySelector(`input[name="${name}"]:checked`)?.value;
+const num = (id) => Number($(id).value);
+
+// --- montar opções
+for (let n = 8; n <= 20; n += 2) $('clubs').add(new Option(n + ' clubes', n, n === 20, n === 20));
+$('speeds').innerHTML = Object.keys(MS_PER_MIN).map((k) => {
+  const s = MS_PER_MIN[k] ? Math.round((90 * MS_PER_MIN[k] + 5000) / 1000) : 0;
+  const d = s === 0 ? 'Só o placar final' : s < 60 ? `~${s} s por jogo` : `~${Math.floor(s / 60)} min ${s % 60 ? (s % 60) + ' s' : ''} por jogo`;
+  return `<label><input type="radio" name="speed" value="${k}"${k === 'NORMAL' ? ' checked' : ''}><span>${SPEED_LABEL[k]}</span><small>${d}</small></label>`;
+}).join('');
+$('diffs').innerHTML = Object.keys(DIFFICULTY).map((k) =>
+  `<label><input type="radio" name="difficulty" value="${k}"${k === 'NORMAL' ? ' checked' : ''}><span>${DIFF_LABEL[k]}</span></label>`).join('');
+$('presets').innerHTML = PRESETS.map(([l], i) => `<button type="button" data-i="${i}">${l}</button>`).join('');
+
+$('presets').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  const p = PRESETS[b.dataset.i][1];
+  $('limitOn').checked = !!p.limit;
+  if (p.limit) { $('prep').value = p.limit[0]; $('prepUnit').value = String(p.limit[1]); }
+  $('minPrep').value = p.minPrep; $('afk').value = String(p.afk);
+  update();
+});
+
+// --- ler formulário -> RoomSettings
+function read() {
+  const solo = num('maxHumans') === 1;          // modo solo: você contra a IA
+  const limitOn = !solo && $('limitOn').checked; // sozinho, o jogo sempre espera você
+  return {
+    name: $('name').value.trim(),
+    maxHumans: num('maxHumans'),
+    isPrivate: !solo && $('isPrivate').checked,
+    structure: {
+      divisions: num('divisions'), clubsPerDivision: num('clubs'),
+      promotion: num('divisions') > 1 ? num('promo') : 0, relegation: num('divisions') > 1 ? num('promo') : 0, humanStart: radio('humanStart'),
+    },
+    rules: {
+      maxSubs: Number(radio('maxSubs')), squadMin: num('squadMin'), squadMax: num('squadMax'),
+      transferWindow: radio('window'), windowRounds: num('windowRounds'),
+      wageCapPercent: $('wageCapOn').checked ? num('wageCap') : null,
+      blockSpendingWhenNegative: $('ffp').checked, injuries: $('injuries').checked, youthIntakePerSeason: $('youth').checked,
+    },
+    pacing: {
+      prepTimeoutMinutes: limitOn ? Math.round(num('prep') * num('prepUnit')) : null,
+      minPrepSeconds: num('minPrep'),
+      afkAfterMisses: limitOn ? num('afk') : 0,
+    },
+    matchSpeed: radio('speed'),
+    difficulty: radio('difficulty'),
+  };
+}
+
+// --- mesma validação de sim/settings.ts
+function validate(s) {
+  const e = [], st = s.structure, r = s.rules, p = s.pacing;
+  if (!s.name || s.name.length > 40) e.push('Dê um nome à sala (até 40 caracteres).');
+  if (!(Number.isInteger(s.maxHumans) && s.maxHumans >= 1 && s.maxHumans <= 40)) e.push('Técnicos humanos: entre 1 (solo) e 40.');
+  if (s.maxHumans > st.divisions * st.clubsPerDivision) e.push('Há mais vagas humanas que clubes. Aumente os clubes ou reduza os técnicos.');
+  if (st.humanStart === 'ULTIMA_DIVISAO' && s.maxHumans > st.clubsPerDivision)
+    e.push(`Começando na última divisão cabem no máximo ${st.clubsPerDivision} técnicos humanos.`);
+  if (st.divisions > 1 && (st.promotion < 1 || st.promotion > st.clubsPerDivision / 4))
+    e.push(`Sobem e descem: entre 1 e ${Math.floor(st.clubsPerDivision / 4)} clubes com ${st.clubsPerDivision} por divisão.`);
+  if (r.squadMin < 16 || r.squadMax > 40 || r.squadMin > r.squadMax) e.push('Elenco: mínimo a partir de 16, máximo até 40, e o mínimo não pode passar do máximo.');
+  if (r.transferWindow === 'JANELAS' && (r.windowRounds < 1 || r.windowRounds > st.clubsPerDivision - 1))
+    e.push(`Janela de transferências: de 1 a ${st.clubsPerDivision - 1} rodadas.`);
+  if (r.wageCapPercent !== null && (r.wageCapPercent < 30 || r.wageCapPercent > 100)) e.push('Teto salarial: entre 30% e 100% da receita.');
+  if (p.prepTimeoutMinutes !== null && !(p.prepTimeoutMinutes >= 1 && p.prepTimeoutMinutes <= 1440))
+    e.push('Tempo limite: de 1 minuto a 24 horas.');
+  if (!(p.minPrepSeconds >= 0 && p.minPrepSeconds <= 600)) e.push('Espera mínima: de 0 a 600 segundos.');
+  if (p.prepTimeoutMinutes !== null && p.minPrepSeconds > p.prepTimeoutMinutes * 60)
+    e.push('A espera mínima não pode ser maior que o tempo limite.');
+  return e;
+}
+
+// --- quanto tempo real dura a temporada
+// Cada rodada = exibição ao vivo + preparação. Melhor caso: todos clicam
+// Pronto logo após a espera mínima. Pior caso: o tempo limite sempre estoura.
+function liveMinutes(s) { const ms = MS_PER_MIN[s.matchSpeed]; return ms ? (95 * ms + 5000) / 60000 : 0; }
+function seasonDuration(s, worst) {
+  const rounds = (s.structure.clubsPerDivision - 1) * 2;
+  const prep = worst ? s.pacing.prepTimeoutMinutes : s.pacing.minPrepSeconds / 60 + 0.5;
+  return rounds * (liveMinutes(s) + prep);
+}
+function fmtDuration(min) {
+  if (min < 60) return Math.round(min) + ' min';
+  if (min < 120) return '1 h' + (Math.round(min) > 60 ? ' ' + (Math.round(min) - 60) + ' min' : '');
+  if (min < 48 * 60) return Math.round(min / 60) + ' h';
+  const d = min / 1440; return (d < 10 ? d.toFixed(1).replace('.', ',') : Math.round(d)) + ' dias';
+}
+
+function renderDiffTable(sel) {
+  const keys = Object.keys(DIFFICULTY);
+  const head = `<thead><tr><th>Efeito</th>${keys.map((k) => `<th class="${k === sel ? 'on' : ''}">${DIFF_LABEL[k]}</th>`).join('')}</tr></thead>`;
+  const body = MODS.map(([m, label, better]) => `<tr><td>${label}</td>${keys.map((k) => {
+    const v = DIFFICULTY[k][m]; const pct = Math.round((v - 1) * 100);
+    const cls = pct === 0 ? '' : (pct > 0) === better ? 'up' : 'down';
+    return `<td class="${k === sel ? 'on' : ''}"><span class="${cls}">${pct === 0 ? '—' : (pct > 0 ? '+' : '') + pct + '%'}</span></td>`;
+  }).join('')}</tr>`).join('');
+  $('diffTable').innerHTML = head + '<tbody>' + body + '</tbody>';
+}
+
+function update() {
+  const s = read();
+  const solo = s.maxHumans === 1;
+  $('privateRow').hidden = solo;
+  $('pwdField').hidden = !s.isPrivate;
+  for (const id of ['multiHint', 'presetsField', 'limitRow']) $(id).hidden = solo;
+  $('soloHint').hidden = !solo;
+  $('windowRoundsRow').hidden = s.rules.transferWindow !== 'JANELAS';
+  $('wageCapRow').hidden = s.rules.wageCapPercent === null;
+  $('limitField').hidden = s.pacing.prepTimeoutMinutes === null;
+  $('afkField').hidden = s.pacing.prepTimeoutMinutes === null;
+  $('promoField').hidden = s.structure.divisions === 1;
+  $('windowRounds').max = s.structure.clubsPerDivision - 1;
+
+  const clubs = s.structure.divisions * s.structure.clubsPerDivision;
+  const rounds = (s.structure.clubsPerDivision - 1) * 2;
+  $('sClubs').textContent = clubs;
+  $('sRounds').textContent = rounds;
+  $('sGames').textContent = (s.structure.divisions * rounds * s.structure.clubsPerDivision / 2).toLocaleString('pt-BR');
+
+  const errors = validate(s);
+  const best = fmtDuration(seasonDuration(s, false));
+  const worst = s.pacing.prepTimeoutMinutes === null ? null : fmtDuration(seasonDuration(s, true));
+  $('sDuration').textContent = errors.some((x) => x.startsWith('Tempo limite') || x.startsWith('Espera')) ? '—'
+    : solo ? `~${best}` : worst ? `${best} a ${worst}` : `${best} ou mais`;
+  const st = $('status');
+  if (errors.length) {
+    st.className = 'status err';
+    st.innerHTML = `<strong>${errors.length} ${errors.length > 1 ? 'ajustes necessários' : 'ajuste necessário'}</strong><ul>${errors.map((x) => `<li>${x.replace(/</g, '&lt;')}</li>`).join('')}</ul>`;
+  } else {
+    st.className = 'status ok';
+    st.textContent = solo
+      ? `Tudo certo. Modo solo: você contra ${(s.structure.divisions * s.structure.clubsPerDivision - 1).toLocaleString('pt-BR')} clubes da IA. Jogando direto, a temporada leva cerca de ${best}.`
+      : worst
+      ? `Tudo certo. Com todos jogando juntos, a temporada leva cerca de ${best}; se o tempo limite estourar em toda rodada, até ${worst}.`
+      : `Tudo certo. Com todos jogando juntos, a temporada leva cerca de ${best}. Sem tempo limite, a sala espera quem faltar.`;
+  }
+  $('create').disabled = errors.length > 0;
+  $('out').textContent = JSON.stringify(s, null, 2);
+  renderDiffTable(s.difficulty);
+  $('toast').textContent = '';
+}
+
+$('room').addEventListener('input', update);
+$('room').addEventListener('change', update);
+$('room').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const s = read();
+  if (validate(s).length) return;
+  if (location.protocol === 'file:') {
+    $('toast').textContent = 'Abra o jogo pelo servidor (jogar.bat ou http://localhost:3000) para criar a sala.';
+    return;
+  }
+  $('create').disabled = true;
+  $('toast').textContent = 'Gerando o mundo…';
+  try {
+    const res = await fetch('/api/salas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
+      body: JSON.stringify({ settings: s, senha: s.isPrivate ? $('pwd').value : '' }) });
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 401) { $('toast').innerHTML = 'Entre na sua conta primeiro: <a href="index.html">ir para o login</a>.'; }
+    else if (!res.ok) { $('toast').textContent = data.erro || 'Não foi possível criar a sala.'; }
+    else { location.href = 'jogo.html?sala=' + encodeURIComponent(data.id); return; }
+  } catch { $('toast').textContent = 'Sem conexão com o servidor. Ele está rodando?'; }
+  $('create').disabled = false;
+});
+$('copy').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText($('out').textContent); $('copy').textContent = 'Copiado'; }
+  catch { const r = document.createRange(); r.selectNodeContents($('out')); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); $('copy').textContent = 'Selecionado'; }
+  setTimeout(() => { $('copy').textContent = 'Copiar'; }, 1500);
+});
+update();
+</script>

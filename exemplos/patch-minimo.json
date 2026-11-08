@@ -1,0 +1,18 @@
+{
+  "formato": "manager-patch",
+  "versao": 1,
+  "clubes": [
+    { "nome": "Grêmio Recreativo Serra Azul", "sigla": "GRS", "cidade": "Caxias do Sul", "divisao": 1,
+      "reputacao": 74, "torcida": 1800000, "estadio": "Estádio da Serra", "capacidade": 32000 },
+    { "nome": "Clube Náutico Lagoa", "sigla": "CNL", "cidade": "Lagoa Dourada", "estado": "MG",
+      "populacao": 85000, "divisao": 2 }
+  ],
+  "jogadores": [
+    { "nome": "Bento Farias", "clube": "GRS", "posicao": "ATA", "idade": 27, "potencial": 82,
+      "atributos": { "velocidade": 81, "resistencia": 70, "forca": 66, "passe": 68, "drible": 79,
+                     "finalizacao": 84, "defesa": 28, "cabeceio": 70, "goleiro": 8, "visao": 72 } },
+    { "nome": "Tito Moraes", "clube": null, "posicao": "GOL", "idade": 33,
+      "atributos": { "velocidade": 40, "resistencia": 55, "forca": 70, "passe": 50, "drible": 30,
+                     "finalizacao": 15, "defesa": 35, "cabeceio": 40, "goleiro": 78, "visao": 60 } }
+  ]
+}

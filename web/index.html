@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="pt-BR">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Manager</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="base.css">
+<script src="comum.js"></script>
+<style>
+.auth { max-width: 420px; }
+.rooms { display: grid; gap: 10px; }
+.room { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; padding: 12px 14px; border: 1px solid var(--line);
+  border-radius: var(--r); background: var(--bg); text-decoration: none; color: var(--ink); }
+.room:hover { border-color: var(--pitch); }
+.room strong { font: 700 20px/1.1 var(--f-display); text-transform: uppercase; }
+.room .meta { grid-column: 1 / -1; font-size: 13px; color: var(--muted); display: flex; gap: 6px 12px; flex-wrap: wrap; }
+.empty { text-align: center; padding: 24px 8px; color: var(--muted); }
+.hero { display: grid; gap: 8px; }
+.hero p { margin: 0; max-width: 56ch; }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Manager</h1>
+      <p class="sub">Futebol, mercado, torcida e estádio — com os amigos ou contra a IA.</p>
+    </div>
+    <div class="who"><span id="userBox" class="small"></span><div id="theme"></div></div>
+  </header>
+
+  <!-- sem login -->
+  <section id="authView" hidden class="grid">
+    <div class="card auth">
+      <div class="seg" role="tablist" aria-label="Entrar ou cadastrar">
+        <button type="button" data-mode="login" aria-pressed="true">Entrar</button>
+        <button type="button" data-mode="cadastro" aria-pressed="false">Criar conta</button>
+      </div>
+      <form id="authForm" class="field" style="gap:12px">
+        <div class="field"><label for="u">Usuário</label><input id="u" type="text" autocomplete="username" required maxlength="20"></div>
+        <div class="field"><label for="p">Senha</label><input id="p" type="password" autocomplete="current-password" required></div>
+        <div id="authMsg" class="msg err" hidden></div>
+        <button class="btn-main" id="authBtn" type="submit">Entrar</button>
+      </form>
+      <p class="small muted" style="margin:0">As contas ficam salvas só neste computador (pasta <code>dados</code>).</p>
+    </div>
+    <div class="card hero">
+      <h2>Como funciona</h2>
+      <p>Crie uma sala, escolha seu clube e escale o time. Cada rodada começa quando todos os técnicos clicam em <strong>Pronto</strong>.</p>
+      <p class="muted">Com 1 técnico você joga sozinho contra a IA. Com mais, mande o código da sala para os amigos.</p>
+    </div>
+  </section>
+
+  <!-- com login -->
+  <section id="homeView" hidden class="grid">
+    <div class="card">
+      <header><h2>Minhas salas</h2><a class="btn primary" href="criar-sala.html">+ Criar sala</a></header>
+      <div id="rooms" class="rooms"></div>
+    </div>
+    <div class="card">
+      <h2>Entrar com código</h2>
+      <form id="joinForm" class="field" style="gap:12px">
+        <div class="row">
+          <div class="field"><label for="code">Código da sala</label><input id="code" type="text" maxlength="6" autocomplete="off" style="text-transform:uppercase;font-family:var(--f-mono)" required></div>
+          <div class="field"><label for="roomPwd">Senha (se houver)</label><input id="roomPwd" type="password" autocomplete="off"></div>
+        </div>
+        <div id="joinMsg" class="msg err" hidden></div>
+        <button class="btn" type="submit">Entrar na sala</button>
+      </form>
+    </div>
+  </section>
+</div>
+
+<script>
+mountTheme($('#theme'));
+let mode = 'login';
+
+async function start() {
+  try {
+    const me = await api('/eu');
+    $('#userBox').innerHTML = `Olá, <strong>${esc(me.usuario)}</strong> · <button class="link-btn" id="logout">Sair</button>`;
+    $('#logout').onclick = async () => { await api('/sair', { method: 'POST' }); location.reload(); };
+    $('#homeView').hidden = false; $('#authView').hidden = true;
+    loadRooms();
+  } catch (e) {
+    $('#userBox').textContent = '';
+    $('#authView').hidden = false; $('#homeView').hidden = true;
+    if (e.status === 0) showMsg('#authMsg', e.message);
+    $('#u').focus();
+  }
+}
+
+async function loadRooms() {
+  const rooms = await api('/salas');
+  $('#rooms').innerHTML = rooms.length ? rooms.map((r) => `
+    <a class="room" href="jogo.html?sala=${encodeURIComponent(r.id)}">
+      <strong>${esc(r.nome)}</strong>
+      ${r.clube ? (r.prontoParaJogar ? '<span class="tag card">Sua vez</span>' : '<span class="tag good">Pronto</span>') : '<span class="tag">Escolher clube</span>'}
+      <span class="meta">
+        <span>${r.clube ? esc(r.clube.nome) : 'Sem clube ainda'}</span>
+        <span>Temporada ${r.temporada} · rodada ${r.rodada}/${r.totalRodadas}</span>
+        <span>${r.solo ? 'Solo contra a IA' : `${r.humanos}/${r.max} técnicos`}</span>
+        <span>Código <code>${esc(r.codigo)}</code></span>
+      </span>
+    </a>`).join('') : `<div class="empty">Você ainda não está em nenhuma sala.<br><a href="criar-sala.html">Crie a primeira</a> ou entre com um código.</div>`;
+}
+
+function showMsg(sel, text) { const el = $(sel); el.textContent = text; el.hidden = !text; }
+
+$$('[data-mode]').forEach((b) => b.onclick = () => {
+  mode = b.dataset.mode;
+  $$('[data-mode]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+  $('#authBtn').textContent = mode === 'login' ? 'Entrar' : 'Criar conta';
+  $('#p').autocomplete = mode === 'login' ? 'current-password' : 'new-password';
+  showMsg('#authMsg', '');
+});
+
+$('#authForm').onsubmit = async (e) => {
+  e.preventDefault();
+  $('#authBtn').disabled = true;
+  try {
+    await api(mode === 'login' ? '/login' : '/cadastro', { method: 'POST', body: { usuario: $('#u').value.trim(), senha: $('#p').value } });
+    showMsg('#authMsg', '');
+    start();
+  } catch (err) { showMsg('#authMsg', err.message); }
+  $('#authBtn').disabled = false;
+};
+
+$('#joinForm').onsubmit = async (e) => {
+  e.preventDefault();
+  try {
+    const r = await api('/salas/entrar', { method: 'POST', body: { codigo: $('#code').value.trim().toUpperCase(), senha: $('#roomPwd').value } });
+    location.href = 'jogo.html?sala=' + encodeURIComponent(r.id);
+  } catch (err) { showMsg('#joinMsg', err.message); }
+};
+
+start();
+</script>

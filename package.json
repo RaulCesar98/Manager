@@ -1,0 +1,16 @@
+{
+  "name": "football-manager-sim",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "jogar": "node --experimental-strip-types --no-warnings server/main.ts --abrir",
+    "demo": "node --experimental-strip-types --no-warnings sim/demo.ts",
+    "temporada": "node --experimental-strip-types --no-warnings sim/demo-temporada.ts",
+    "gerar": "node --experimental-strip-types --no-warnings sim/cli-gerar.ts",
+    "typecheck": "tsc -p ."
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0"
+  }
+}
