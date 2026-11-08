@@ -121,6 +121,7 @@ export interface Room {
   loanRefusals?: Record<string, number>; // pedidos recusados na temporada (temporada:clube:jogador)
   crowdRound?: CrowdRound;              // mosaicos e vaias decididos para a rodada
   crowdLog?: Record<number, CrowdEvent[]>; // o que a torcida fez (clubes humanos)
+  mosaicCount?: Record<string, number>;  // mosaicos por temporada e clube ("temporada:clube")
 }
 
 /** Corrige números quebrados de salas antigas (humor, condição, atributos sempre inteiros). */

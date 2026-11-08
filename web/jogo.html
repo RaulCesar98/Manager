@@ -306,6 +306,11 @@ button.board:hover { box-shadow: 0 0 0 2px var(--card); }
 .crowd-events li.bad { box-shadow: inset 3px 0 0 var(--bad); } .crowd-events li.good { box-shadow: inset 3px 0 0 var(--good); }
 .crowd-events li strong { display: block; font-size: 14px; }
 .crowd-events li .when { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.rank-mood { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.rank-mood i { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.rank-mood.good i { background: var(--good); } .rank-mood.warn i { background: var(--card); } .rank-mood.bad i { background: var(--bad); }
+.medal { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; font: 800 12px var(--f-body); background: var(--line); color: var(--ink); }
+.medal.m1 { background: #e8c547; color: #2a2100; } .medal.m2 { background: #c9d0d6; color: #1b2228; } .medal.m3 { background: #c98b55; color: #2a1606; }
 .loan-sum { padding: 10px 12px; border-radius: var(--r); background: var(--bg); font-size: 14px; display: grid; gap: 2px; }
 </style>
 
@@ -422,6 +427,12 @@ button.board:hover { box-shadow: 0 0 0 2px var(--card); }
         <div class="card"><h3>Artilheiros</h3><div class="table-wrap"><table id="scorers"></table></div></div>
         <div class="card"><header><h3>Seleção do campeonato</h3><span class="small muted" id="teamNote"></span></header>
           <div class="pitch mini-pitch" id="bestXI"></div></div>
+      </div>
+      <div class="card" id="fanRankCard">
+        <header class="row-head"><h3>Ranking de torcidas</h3><div class="seg" id="fanRankTiers"></div></header>
+        <p class="small" id="fanRankSummary" style="margin:0"></p>
+        <p class="small muted" style="margin:0">Clique no título de uma coluna para ordenar. Crescimento e mosaicos contam desde o início da temporada.</p>
+        <div class="table-wrap"><table id="fanRank"></table></div>
       </div>
     </div>
 
@@ -1256,8 +1267,49 @@ async function renderTable() {
       <td class="l">${esc(r.name)} ${r.human && r.clubId !== S.eu.clubeId ? '<span class="tag">Humano</span>' : ''}</td>
       <td><strong>${r.pts}</strong></td><td>${r.played}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td><td>${r.gf}</td><td>${r.ga}</td><td>${r.gd > 0 ? '+' : ''}${r.gd}</td></tr>`).join('')}</tbody>`;
   renderHighlights();
+  renderFanRanking();
 }
 $('#tierTabs').onclick = (e) => { const b = e.target.closest('button'); if (b) { tableTier = Number(b.dataset.t); renderTable(); } };
+
+// ===================================================== ranking de torcidas
+let fanRank = null, frTier = 0, frKey = 'torcida', frDir = -1;
+const FR_SORT = { torcida: (r) => r.torcida, nome: (r) => r.nome, divisao: (r) => r.divisao, variacao: (r) => r.variacaoPct, humor: (r) => r.humor,
+  socios: (r) => r.socios, publico: (r) => r.publicoMedio ?? -1, mosaicos: (r) => r.mosaicos, reputacao: (r) => r.reputacao };
+async function renderFanRanking(reload = true) {
+  if (reload || !fanRank) { try { fanRank = await api(`/salas/${roomId}/torcidas`); } catch (e) { return; } }
+  $('#fanRankTiers').innerHTML = [[0, 'Todas'], ...S.sala.divisoes.map((d) => [d.tier, d.nome])]
+    .map(([t, n]) => `<button type="button" data-t="${t}" aria-pressed="${t === frTier}">${esc(n)}</button>`).join('');
+  const all = fanRank.clubes;
+  const me = all.find((r) => r.eu);
+  if (me) {
+    const inDiv = all.filter((r) => r.divisao === me.divisao);
+    const pDiv = inDiv.findIndex((r) => r.eu) + 1;
+    const grow = [...all].sort((a, b) => b.variacaoPct - a.variacaoPct).findIndex((r) => r.eu) + 1;
+    $('#fanRankSummary').innerHTML = `Sua torcida é a <strong>${me.pos}ª maior</strong> de ${all.length} clubes (${pDiv}ª da divisão), com ${fmtNum(me.torcida)} torcedores. Em crescimento na temporada, você está em <strong>${grow}º</strong> (${me.variacaoPct > 0 ? '+' : ''}${String(me.variacaoPct).replace('.', ',')}%).`;
+  } else $('#fanRankSummary').textContent = '';
+  const rows = all.filter((r) => !frTier || r.divisao === frTier);
+  const f = FR_SORT[frKey];
+  rows.sort((a, b) => { const x = f(a), y = f(b); return (typeof x === 'string' ? x.localeCompare(y) : x - y) * frDir || a.pos - b.pos; });
+  const cols = [[null, '#'], ['nome', 'Clube', 'l'], ['divisao', 'Div.'], ['torcida', 'Torcedores'], ['variacao', 'Na temporada'], ['humor', 'Humor', 'l'],
+    ['socios', 'Sócios'], ['publico', 'Público médio'], ['mosaicos', 'Mosaicos'], ['reputacao', 'Reputação']];
+  $('#fanRank').innerHTML = `<thead><tr>${cols.map(([k, l, c]) => k ? `<th class="sort ${c ?? ''}" data-frsort="${k}" tabindex="0" aria-sort="${k === frKey ? (frDir > 0 ? 'ascending' : 'descending') : 'none'}">${l}</th>` : `<th>${l}</th>`).join('')}</tr></thead>
+    <tbody>${rows.map((r) => `<tr class="${r.eu ? 'me' : ''}">
+      <td>${r.pos <= 3 ? `<span class="medal m${r.pos}" title="${r.pos}ª maior torcida">${r.pos}</span>` : r.pos}</td>
+      <td class="l">${crest(r.sigla, r.clubId, 'crest', 18)} <strong>${esc(r.nome)}</strong>${r.humano && !r.eu ? ' <span class="tag">Humano</span>' : ''}</td>
+      <td>${r.divisao}</td><td class="num"><strong>${fmtNum(r.torcida)}</strong></td>
+      <td class="num ${r.variacao > 0 ? 'money-in' : r.variacao < 0 ? 'money-out' : ''}">${r.variacao > 0 ? '+' : r.variacao < 0 ? '−' : ''}${fmtNum(Math.abs(r.variacao))} <span class="small">(${r.variacaoPct > 0 ? '+' : ''}${String(r.variacaoPct).replace('.', ',')}%)</span></td>
+      <td class="l"><span class="rank-mood ${r.tom}" title="Humor ${r.humor} de 100"><i></i>${r.humor} · ${esc(r.faixa)}</span></td>
+      <td class="num">${fmtNum(r.socios)}</td>
+      <td class="num">${r.publicoMedio === null ? '–' : `${fmtNum(r.publicoMedio)} <span class="small muted">(${r.ocupacao}%)</span>`}</td>
+      <td class="num">${r.mosaicos ? `🎨 ${r.mosaicos}` : '–'}</td><td class="num">${r.reputacao}</td></tr>`).join('')}</tbody>`;
+}
+$('#fanRankTiers').onclick = (e) => { const b = e.target.closest('button'); if (b) { frTier = Number(b.dataset.t); renderFanRanking(false); } };
+$('#fanRank').addEventListener('click', (e) => {
+  const th = e.target.closest('th[data-frsort]'); if (!th) return;
+  const k = th.dataset.frsort; if (k === frKey) frDir = -frDir; else { frKey = k; frDir = k === 'nome' || k === 'divisao' ? 1 : -1; }
+  renderFanRanking(false);
+});
+$('#fanRank').addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { const th = e.target.closest('th[data-frsort]'); if (th) { e.preventDefault(); th.click(); } } });
 
 async function renderHighlights() {
   let d; try { d = await api(`/salas/${roomId}/destaques/${tableTier}`); } catch (e) { return; }

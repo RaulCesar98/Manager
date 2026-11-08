@@ -101,6 +101,11 @@ export function crowdAfterRound(room: Room, round: number) {
   const cr = room.crowdRound?.season === room.season && room.crowdRound.round === round ? room.crowdRound : null;
   const rng = new Rng(Math.floor(Math.random() * 2_000_000_000));
   const results = room.results.filter((r) => r.round === round);
+  // mosaicos de todos os clubes contam para o ranking de torcidas
+  if (cr) {
+    room.mosaicCount ??= {};
+    for (const id of Object.keys(cr.mosaics)) { const k = `${room.season}:${id}`; room.mosaicCount[k] = (room.mosaicCount[k] ?? 0) + 1; }
+  }
 
   for (const clubId of H) {
     const club = clubOf(room, clubId);
@@ -190,6 +195,28 @@ export function crowdAfterRound(room: Room, round: number) {
 }
 
 // ================================================================ views
+/** Ranking de torcidas: todos os clubes, com tamanho, humor, sócios, crescimento e público. */
+export function fanRanking(room: Room, myClubId: number | null) {
+  const H = humans(room);
+  const rows = room.world.clubs.map((c) => {
+    const cs = room.clubs[c.id];
+    const hist = cs?.fanHistory ?? [c.fanBase];
+    const homes = room.results.filter((r) => r.homeId === c.id);
+    const cap = c.sectors.reduce((s, x) => s + x.capacity, 0);
+    const avg = homes.length ? Math.round(homes.reduce((s, r) => s + (r.attendance ?? 0), 0) / homes.length) : null;
+    const band = bandOf(c.fanMood);
+    return {
+      clubId: c.id, nome: c.name, sigla: c.shortName, divisao: c.tier, humano: H.has(c.id), eu: c.id === myClubId,
+      torcida: c.fanBase, humor: c.fanMood, faixa: band.name, tom: band.tone, socios: cs?.members ?? 0,
+      variacao: c.fanBase - hist[0], variacaoPct: hist[0] ? Math.round(((c.fanBase - hist[0]) / hist[0]) * 1000) / 10 : 0,
+      publicoMedio: avg, ocupacao: avg !== null && cap ? Math.round((avg / cap) * 100) : null,
+      mosaicos: room.mosaicCount?.[`${room.season}:${c.id}`] ?? 0, reputacao: c.reputation,
+    };
+  }).sort((a, b) => b.torcida - a.torcida);
+  rows.forEach((r, i) => Object.assign(r, { pos: i + 1 }));
+  return { temporada: room.season, rodada: room.round, clubes: rows };
+}
+
 export function crowdView(room: Room, clubId: number) {
   const club = clubOf(room, clubId);
   const band = bandOf(club.fanMood);

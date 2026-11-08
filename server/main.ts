@@ -21,7 +21,7 @@ import {
 } from './office.ts';
 import type { SponsorSlot } from '../sim/fans.ts';
 import { cancelProject, extraIntake, gatePreview, promoteYouth, releaseYouth, setTicketPrices, stadiumView, startProject, youthView } from './club.ts';
-import { crowdView } from './crowd.ts';
+import { crowdView, fanRanking } from './crowd.ts';
 import { answerLoan, exerciseBuy, loanOf, loansView, playerLoanInfo, proposeLoan, setLoanListed } from './loans.ts';
 import { answerHumanOffer, currentValue, listingPrice, playerDetail, searchPlayers, setForSale, startInterest, type SearchFilters } from './market.ts';
 import {
@@ -615,6 +615,13 @@ route('POST', '/api/salas/:id/patrocinios/:slot/romper', async (req, res, [id, s
   const multa = breakSponsorship(room!, clubId, slot as SponsorSlot);
   saveRoom(room!);
   send(res, 200, { multa, patrocinios: sponsorshipView(room!, clubId) });
+});
+
+route('GET', '/api/salas/:id/torcidas', async (req, res, [id]) => {
+  const u = requireUser(req);
+  const room = roomById(id);
+  const me = requireMember(room, u);
+  send(res, 200, fanRanking(room!, me.clubId));
 });
 
 route('GET', '/api/salas/:id/destaques/:tier', async (req, res, [id, tier]) => {

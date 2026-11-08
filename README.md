@@ -67,6 +67,11 @@ com as cores do clube (sigla, escudo, listras, estrelas ou diagonal), cartão po
 aparece na mensagem e no quadro "Torcida" do Início, com as chances da próxima rodada.
 Agressões e invasões só acontecem com clubes de técnicos.
 
+**Ranking de torcidas** (aba Tabela): todos os clubes ordenados pelo número de torcedores, com
+crescimento na temporada, humor, sócios, público médio (e ocupação), mosaicos da temporada e
+reputação. Filtra por divisão, ordena por qualquer coluna e mostra a sua posição no geral, na
+divisão e em crescimento.
+
 **Rodada ao vivo:** o servidor avança os jogos conforme o relógio (velocidade da sala).
 Substituições e mudanças de postura entram no minuto em que são feitas e ficam gravadas;
 se o servidor reiniciar no meio da rodada, os jogos são reconstruídos iguais (mesma
